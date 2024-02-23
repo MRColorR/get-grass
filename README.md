@@ -1,6 +1,6 @@
 # GetGrass Docker Image
 
-An unofficial Docker Image for (https://app.getgrass.io/register/?referralCode=LxGryHB0y3gmNml). 
+An unofficial Docker Image for [grass](https://app.getgrass.io/register/?referralCode=LxGryHB0y3gmNml). 
 
 
 ## Getting Started
