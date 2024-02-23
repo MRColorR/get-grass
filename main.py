@@ -3,18 +3,22 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
+
+
 import time
 
 def run():
     email = os.environ['USER']
     password = os.environ['PASS']
     # Create Chrome options and add the extension
+    # Start the virtual display
+
     chrome_options = Options()
     chrome_options.add_extension('./3.3.0_1.crx')
     chrome_options.add_argument('--no-sandbox')
-    #chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--headless=new')
     chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36")
+    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0")
 
     #chrome_options.add_experimental_option("detach", True)
 
@@ -34,7 +38,7 @@ def run():
     button = driver.find_element(By.XPATH, "//button")
 
     button.click()
-    time.sleep(120)
+    time.sleep(10)
     driver.get('chrome-extension://ilehaonighjijnmpnagapkhpcdbhclfg/index.html')
     time.sleep(3)
     button = driver.find_element(By.XPATH, "//button")
