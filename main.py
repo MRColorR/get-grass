@@ -2,6 +2,7 @@ import os
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+import random
 
 
 
@@ -28,7 +29,7 @@ def run():
     # Navigate to a webpage
     driver.get("https://app.getgrass.io/")
 
-    time.sleep(3)
+    time.sleep(random.randint(3,7))
     username = driver.find_element(By.NAME,"user")
     username.send_keys(email)
 
@@ -38,9 +39,9 @@ def run():
     button = driver.find_element(By.XPATH, "//button")
 
     button.click()
-    time.sleep(10)
+    time.sleep(random.randint(10,50))
     driver.get('chrome-extension://ilehaonighjijnmpnagapkhpcdbhclfg/index.html')
-    time.sleep(3)
+    time.sleep(random.randint(3,7))
     button = driver.find_element(By.XPATH, "//button")
 
     button.click()
