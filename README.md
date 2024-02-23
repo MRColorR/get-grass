@@ -23,7 +23,9 @@ https://app.getgrass.io/register/?referralCode=LxGryHB0y3gmNml
    - Now you can run the Docker container with the appropriate environment variables.
    - Replace `<your_email>` and `<your_password>` with your actual Grass account credentials:
 
-     ```bash docker run -d -e USER=<your_email> -e PASS=<your_password> grass```
+     ```bash
+      docker run -d -e USER=<your_email> -e PASS=<your_password> grass
+      ```
 
 
 
