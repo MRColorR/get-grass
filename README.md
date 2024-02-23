@@ -1,6 +1,7 @@
 # GetGrass Docker Image
 
 An unofficial Docker Image for getgrass.io. GetGrass allows you to earn passive income by sharing your network bandwidth.
+https://app.getgrass.io/register/?referralCode=LxGryHB0y3gmNml
 
 ## Getting Started
 
@@ -8,7 +9,7 @@ An unofficial Docker Image for getgrass.io. GetGrass allows you to earn passive 
    - First, clone the files from this repository to your local device:
 
      ```bash
-     git clone https://github.com/kgregor98/grass.git
+     git clone https://github.com/Carbon2029/get-grass-docker-unofficial.git
      cd grass
      ```
 
@@ -22,7 +23,7 @@ An unofficial Docker Image for getgrass.io. GetGrass allows you to earn passive 
    - Now you can run the Docker container with the appropriate environment variables.
    - Replace `<your_email>` and `<your_password>` with your actual Grass account credentials:
 
-     ```docker run -d -e USER=<your_email> -e PASS=<your_password> grass```
+     ```bash docker run -d -e USER=<your_email> -e PASS=<your_password> grass```
 
 
 
