@@ -1,7 +1,7 @@
 # GetGrass Docker Image
 
-An unofficial Docker Image for getgrass.io. GetGrass allows you to earn passive income by sharing your network bandwidth.
-https://app.getgrass.io/register/?referralCode=LxGryHB0y3gmNml
+An unofficial Docker Image for (https://app.getgrass.io/register/?referralCode=LxGryHB0y3gmNml). 
+
 
 ## Getting Started
 
