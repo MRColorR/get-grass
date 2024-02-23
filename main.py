@@ -14,7 +14,7 @@ def run():
     chrome_options.add_argument('--headless')
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_extension('./3.3.0_1.crx')
-    chrome_options.add_experimental_option("detach", True)
+    #chrome_options.add_experimental_option("detach", True)
 
     # Initialize the WebDriver
     driver = webdriver.Chrome( options=chrome_options)
@@ -34,8 +34,9 @@ def run():
     button.click()
     time.sleep(10)
     driver.get('chrome-extension://ilehaonighjijnmpnagapkhpcdbhclfg/index.html')
-    button = driver.find_element(By.XPATH, "//button")
 
-    button.click()
+    print('logged in')
+    while True:
+        time.sleep(3600)
 
 run()
