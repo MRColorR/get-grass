@@ -10,7 +10,6 @@ An unofficial Docker Image for (https://app.getgrass.io/register/?referralCode=L
 
      ```bash
      git clone https://github.com/Carbon2029/get-grass-docker-unofficial.git
-     cd grass
      ```
 
 2. **Build the Docker Image**:
