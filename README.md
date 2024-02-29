@@ -27,7 +27,10 @@ An unofficial Docker Image for [grass](https://app.getgrass.io/register/?referra
       ```
 
 
+## Some random questions 
 
+Is it lightweight?
+- As of now no,t cpu usage is around 0.01 - 1% and ram usage is around 275 mb will improve it eventually(if I get time or if I get paid ;) )
 
 
 ## License
