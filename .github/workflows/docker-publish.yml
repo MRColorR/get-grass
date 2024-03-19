@@ -88,7 +88,7 @@ jobs:
         if: steps.version-check.outputs.trigger_build == 'true'
         run: |
           docker buildx build \
-            --platform linux/amd64,linux/arm64 \
+            --platform linux/amd64,linux/arm64,linux/arm/v7 \
             -t ${{ env.IMAGE_NAME}}:${{ env.TAG }} \
             --push .
 
