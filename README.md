@@ -3,34 +3,20 @@
 An unofficial Docker Image for [grass](https://app.getgrass.io/register/?referralCode=LxGryHB0y3gmNml). 
 
 
-## Getting Started
+## Quick Start 🚀
 
-1. **Clone the Repository**:
-   - First, clone the files from this repository to your local device:
+  - You can run the Docker container with the appropriate environment variables.
+    - Replace `<your_email>` and `<your_password>` with your actual Grass account credentials:
 
-     ```bash
-     git clone https://github.com/Carbon2029/get-grass-docker-unofficial.git
-     ```
-
-2. **Build the Docker Image**:
-   - Navigate to the folder where the cloned files are located.
-   - Build the Docker image using the following command:
-
-     ```docker build -t grass .```
-
-3. **Run the Docker Container**:
-   - Now you can run the Docker container with the appropriate environment variables.
-   - Replace `<your_email>` and `<your_password>` with your actual Grass account credentials:
-
-     ```bash
-      docker run -d -e USER=<your_email> -e PASS=<your_password> grass
-      ```
+    ```bash
+    docker run -d -e USER=<your_email> -e PASS=<your_password> mrcolorrain/grass
+    ```
 
 
 ## Some random questions 
 
 Is it lightweight?
-- As of now no,cpu usage is around 0.01 - 1% and ram usage is around 275 mb will improve it eventually(if I get time or if I get paid ;) )
+- As of now no,cpu usage is around 0.01 - 1% and ram usage is around 275 mb will improve it eventually
 
 
 ## License
