@@ -44,10 +44,9 @@ jobs:
               echo "Unsupported architecture: $ARCH" && exit 1
           fi
           echo "Detected runner arch: $ARCH"
-          wget -q https://api.speedshare.app/download/linux/cli/$ARCH -O SpeedShareCLI
-          chmod +x SpeedShareCLI
-          ./SpeedShareCLI version > latest_version.txt
-          LATEST_VERSION=$(cat latest_version.txt | awk -F': ' '/[Vv]ersion:/ {gsub(/^ +| +$|│/,"",$2); print $2}' | sed 's/\x1b\[[0-9;]*m//g')
+          wget -q "https://chromewebstore.google.com/detail/${{ secrets.EXTENSION_ID }}" -O extension_page.html
+          cat extension_page.html | grep -Po '(?<=\\\"version\\\": \\\")([0-9]+\.[0-9]+\.[0-9]+)(?=\\\",)' > latest_version.txt
+          LATEST_VERSION=$(cat latest_version.txt)
           echo "Latest Version detected: $LATEST_VERSION"
 
           # Check the current version stored in the repository
@@ -82,8 +81,8 @@ jobs:
         if: steps.version-check.outputs.trigger_build == 'true'
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME_2 }}
-          password: ${{ secrets.DOCKER_PASSWORD_2 }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and Push Docker Image
         if: steps.version-check.outputs.trigger_build == 'true'
