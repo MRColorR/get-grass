@@ -19,24 +19,23 @@ Ensure Docker is installed on your system. For installation instructions, please
 
 ## Quick Start 🚀
 You can run it easily passing the appropriate environment variables.
-  - Replace `<your_email>` and `<your_password>` with your actual Grass account credentials:
-### Docker cli 🐳
-```bash
-docker run -d --name grass -h my_device -e GRASS_USER=your_email -e GRASS_PASS=your_password mrcolorrain/grass
-```
-### Docker compose 🐳
-```yaml
-version: "3.9"
-services:
-  grass:
-    container_name: grass
-    hostname: my_device
-    image: mrcolorrain/grass
-    environment:
-      - GRASS_USER=your_email
-      - GRASS_PASS=your_password
-    restart: unless-stopped
-```
+- ### Docker cli 🐳
+  ```bash
+  docker run -d --name grass -h my_device -e GRASS_USER=your_email -e GRASS_PASS=your_password mrcolorrain/grass
+  ```
+- ### Docker compose 🐳
+  ```yaml
+  version: "3.9"
+  services:
+    grass:
+      container_name: grass
+      hostname: my_device
+      image: mrcolorrain/grass
+      environment:
+        - GRASS_USER=your_email
+        - GRASS_PASS=your_password
+      restart: unless-stopped
+  ```
 
 ## Contributing 🤲
 Your contributions are welcome! If you'd like to improve the project or fix a bug, please fork the repository and submit a pull request. Let's make this project even better, together!
