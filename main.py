@@ -14,13 +14,13 @@ def run():
     logging.info('Starting the script...')
 
     # Read variables from the OS env
-    email = os.getenv('USER')
-    password = os.getenv('PASS')
+    email = os.getenv('GRASS_USER')
+    password = os.getenv('GRASS_PASS')
     extension_id = os.getenv('EXTENSION_ID')
 
     # Check if credentials are provided
     if not email or not password:
-        logging.error('No username or password provided. Please set the USER and PASS environment variables.')
+        logging.error('No username or password provided. Please set the GRASS_USER and GRASS_PASS environment variables.')
         return  # Exit the script if credentials are not provided
 
     chrome_options = Options()

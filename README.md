@@ -9,7 +9,7 @@ An unofficial Docker Image for [grass](https://app.getgrass.io/register/?referra
     - Replace `<your_email>` and `<your_password>` with your actual Grass account credentials:
 
     ```bash
-    docker run -d -e USER=<your_email> -e PASS=<your_password> mrcolorrain/grass
+    docker run -d -e GRASS_USER=<your_email> -e GRASS_PASS=<your_password> mrcolorrain/grass
     ```
 
 
