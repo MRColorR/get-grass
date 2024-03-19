@@ -9,6 +9,7 @@
 This repository hosts the Dockerfile and necessary configurations for the unofficial [Grass](https://app.getgrass.io/register/?referralCode=qyvJmxgNUhcLo2f) Docker image. It's designed to facilitate the deployment of Grass (GetGrass) in Docker environments, supporting both x86_64 and arm64 architectures.
 
 ## Features ✨
+- **Debian slim Base Image**: Utilizes the latest version of Debian slim for a small footprint.
 - **Multi-Architecture Support**: Supports both x86_64 and arm64 architectures.
 - **Minimal Configuration**: Easy to set up with minimal configuration required.
 - **Auto-Update**: Always updated to be in line with the latest Grass version.
