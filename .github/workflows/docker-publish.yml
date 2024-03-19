@@ -6,10 +6,10 @@ name: Docker Build and Push
 # documentation.
 
 on:
-  # schedule:
-  #   - cron: '0 0 * * *' # Runs at 00:00 UTC daily
-  # push:
-  #   branches: [ "main" ]
+  schedule:
+    - cron: '0 0 * * *' # Runs at 00:00 UTC daily
+  push:
+    branches: [ "main" ]
   workflow_dispatch:
 
 permissions: # The permissions that the workflow has. The permissions are inherited from the job and can be customized.
