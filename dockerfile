@@ -2,6 +2,7 @@ FROM debian:stable-slim
 
 # Set environment variables
 ENV EXTENSION_ID=ilehaonighjijnmpnagapkhpcdbhclfg
+ENV EXTENSION_URL='https://app.getgrass.io/'
 ENV GIT_USERNAME=warren-bank
 ENV GIT_REPO=chrome-extension-downloader
 

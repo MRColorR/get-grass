@@ -17,6 +17,7 @@ def run():
     email = os.getenv('GRASS_USER')
     password = os.getenv('GRASS_PASS')
     extension_id = os.getenv('EXTENSION_ID')
+    extension_url = os.getenv('EXTENSION_URL')
 
     # Check if credentials are provided
     if not email or not password:
@@ -35,8 +36,8 @@ def run():
 
     try:
         # Navigate to a webpage
-        logging.info('Navigating to the website...')
-        driver.get("https://app.getgrass.io/")
+        logging.info(f'Navigating to {extension_url} website...')
+        driver.get(extension_url)
         time.sleep(random.randint(3,7))
 
         logging.info('Entering credentials...')
