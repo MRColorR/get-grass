@@ -65,6 +65,8 @@ def run():
     except Exception as e:
         logging.error(f'An error occurred: {e}')
         driver.quit()
+        time.sleep(60)
+        run()
 
     while True:
         try:
