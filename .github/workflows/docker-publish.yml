@@ -59,7 +59,7 @@ jobs:
           fi
           CURRENT_VERSION=$(cat ${{ env.VERSION_FILE_PATH }})
           echo "Current Version: $CURRENT_VERSION"
-          if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
+          if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ] || [ "${{ github.event_name }}" = "workflow_dispatch"  ]; then
               echo "New version detected: $LATEST_VERSION. Triggering build..."
               echo "latest_version=$LATEST_VERSION" >> $GITHUB_ENV
               echo "$LATEST_VERSION" > ${{ env.VERSION_FILE_PATH }}
