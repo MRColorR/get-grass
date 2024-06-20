@@ -1,0 +1,14 @@
+services:
+  grass-node:
+    build:
+      context: .
+      dockerfile: grass-node.dockerfile
+    environment:
+      GRASS_USER: ${GRASS_USER}
+      GRASS_PASS: ${GRASS_PASS}
+      EXTENSION_ID: ${EXTENSION_ID}
+      EXTENSION_URL: ${EXTENSION_URL}
+    ports:
+      - "8080:8080"
+    tty: true
+    stdin_open: true

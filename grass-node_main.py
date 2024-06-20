@@ -52,19 +52,15 @@ def download_and_extract_extension(driver, extension_id):
             raise FileNotFoundError('CRX file not found in the extracted folder.')
 
         logging.info(f"Extension extracted to {crx_file_path}")
-        
-        logging.info('Closing the browser...')
-        driver.quit()
         return crx_file_path
     except Exception as e:
         logging.error(f'Error downloading or extracting extension: {e}')
         driver.quit()
         raise
 
-def login_and_get_driver(email, password, extension_url, driver_options):
-    """Log in to the website and return an authenticated WebDriver instance."""
+def login_to_website(driver, email, password, extension_url):
+    """Log in to the website using the given WebDriver instance."""
     try:
-        driver = webdriver.Chrome(options=driver_options)
         driver.get(extension_url)
         logging.info('Waiting for the login page to load...')
         
@@ -90,7 +86,6 @@ def login_and_get_driver(email, password, extension_url, driver_options):
         )
         logging.info('Login successful!')
         time.sleep(random.randint(3, 7))
-        return driver
     except Exception as e:
         logging.error(f'Error during login: {e}')
         driver.quit()
@@ -121,10 +116,14 @@ def main():
     
     try:
         # Perform initial login and get WebDriver instance
-        driver = login_and_get_driver(email, password, extension_url, driver_options)
+        driver = webdriver.Chrome(options=driver_options)
+        login_to_website(driver, email, password, extension_url)
         
         # Download and install the latest extension
         crx_file_path = download_and_extract_extension(driver, extension_id)
+
+        logging.info('Closing the browser and re-initializing it with the extension installed...')
+        driver.quit()
         
         # Add the downloaded extension to the Chrome options
         driver_options.add_extension(crx_file_path)
@@ -133,22 +132,8 @@ def main():
         driver = webdriver.Chrome(options=driver_options)
         logging.info('Browser re-initialized with the extension installed.')
         
-        logging.info(f'Navigating to {extension_url} website...')
-        driver.get(extension_url)
-        time.sleep(random.randint(3, 7))
-
-        logging.info('Entering credentials again...')
-        username = driver.find_element(By.NAME, "user")
-        username.send_keys(email)
-        passwd = driver.find_element(By.NAME, "password")
-        passwd.send_keys(password)
-        time.sleep(random.randint(3, 7))
-        
-        logging.info('Clicking the login button...')
-        login_button = driver.find_element(By.XPATH, "//button")
-        login_button.click()
-        logging.info('Waiting for response...')
-        time.sleep(random.randint(10, 50))
+        # Log in again with the new extension installed
+        login_to_website(driver, email, password, extension_url)
         
         logging.info('Accessing extension settings page...')
         driver.get(f'chrome-extension://{extension_id}/index.html')
@@ -157,7 +142,8 @@ def main():
         logging.info('Clicking the extension button...')
         extension_button = driver.find_element(By.XPATH, "//button")
         extension_button.click()
-        
+        logging.info('Extension button clicked.')
+        time.sleep(random.randint(30, 70))
         logging.info('Logged in successfully.')
         logging.info('Earning...')
     except Exception as e:
