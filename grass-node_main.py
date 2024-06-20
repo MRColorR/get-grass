@@ -16,8 +16,8 @@ def setup_logging():
     """Set up logging for the script."""
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def download_extension(driver, extension_id):
-    """Download the latest version of the extension using the authenticated session."""
+def download_and_extract_extension(driver, extension_id):
+    """Download and extract the latest version of the extension using the authenticated session."""
     try:
         logging.info('Fetching the latest release information...')
         driver.get('https://api.getgrass.io/extensionLatestRelease')
@@ -32,16 +32,32 @@ def download_extension(driver, extension_id):
         response = requests.get(linux_download_url, verify=False)
         response.raise_for_status()
         
-        crx_file_path = f'./{extension_id}.crx'
-        with open(crx_file_path, 'wb') as crx_file:
-            crx_file.write(response.content)
+        zip_file_path = f'./{extension_id}.zip'
+        with open(zip_file_path, 'wb') as zip_file:
+            zip_file.write(response.content)
+            logging.info(f"Downloaded extension to {zip_file_path}")
         
-        logging.info(f"Extension downloaded to {crx_file_path}")
+        logging.info(f"Extracting the extension from {zip_file_path}")
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+            zip_ref.extractall('./')
+        
+        crx_file_path = None
+        for root, dirs, files in os.walk('./'):
+            for file in files:
+                if file.endswith('.crx'):
+                    crx_file_path = os.path.join(root, file)
+                    break
+        
+        if not crx_file_path:
+            raise FileNotFoundError('CRX file not found in the extracted folder.')
+
+        logging.info(f"Extension extracted to {crx_file_path}")
+        
         logging.info('Closing the browser...')
         driver.quit()
         return crx_file_path
     except Exception as e:
-        logging.error(f'Error downloading extension: {e}')
+        logging.error(f'Error downloading or extracting extension: {e}')
         driver.quit()
         raise
 
@@ -101,13 +117,14 @@ def main():
     driver_options.add_argument('--no-sandbox')
     driver_options.add_argument('--disable-dev-shm-usage')
     driver_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0")
+    driver_options.add_argument('--window-size=1280,1024')
     
     try:
         # Perform initial login and get WebDriver instance
         driver = login_and_get_driver(email, password, extension_url, driver_options)
         
         # Download and install the latest extension
-        crx_file_path = download_extension(driver, extension_id)
+        crx_file_path = download_and_extract_extension(driver, extension_id)
         
         # Add the downloaded extension to the Chrome options
         driver_options.add_extension(crx_file_path)
