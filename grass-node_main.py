@@ -111,8 +111,11 @@ def main():
     driver_options = Options()
     driver_options.add_argument('--no-sandbox')
     driver_options.add_argument('--disable-dev-shm-usage')
-    driver_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0")
+    #driver_options.add_argument('--headless')  # Run Chrome in headless mode
+    driver_options.add_argument('--disable-gpu')
+    driver_options.add_argument('--remote-debugging-port=9222')
     driver_options.add_argument('--window-size=1280,1024')
+    driver_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0")
     
     try:
         # Perform initial login and get WebDriver instance

@@ -5,7 +5,8 @@ ENV EXTENSION_ID=grass
 ENV EXTENSION_URL='https://app.getgrass.io/'
 
 # Install necessary packages then clean up to reduce image size
-RUN apt update && \
+RUN set -ex; \
+    apt update && \
     apt upgrade -y && \
     apt install -qqy \
     curl \
@@ -22,12 +23,14 @@ RUN apt update && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy only the main Python script
+# Copy the Supervisor configuration and Python script
 COPY grass-node_main.py /app/grass-node_main.py
+COPY conf.d/grass-node.conf /app/conf.d/grass-node.conf
+
 WORKDIR /app
 
-#Expose noVNC port
-EXPOSE  8080
+# Expose noVNC port
+EXPOSE 8080
 
-# Start app
-ENTRYPOINT [ "python3", "grass-node_main.py" ]
+# Use the base image's entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
