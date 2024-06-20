@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  grass-node:
+    build:
+      context: .
+      dockerfile: grass-node.dockerfile
+    volumes:
+      - ./:/app
+    environment:
+      GRASS_USER: ${GRASS_USER}
+      GRASS_PASS: ${GRASS_PASS}
+      EXTENSION_ID: ${EXTENSION_ID}
+      EXTENSION_URL: ${EXTENSION_URL}
+    working_dir: /app
+    entrypoint: ["/bin/bash"]
+    develop:
+      watch:
+        - action: sync
+          path: ./
+          target: /app
+          ignore:
+            - .git/
+            - __pycache__/
+            - node_modules/
+        - action: rebuild
+          path: ./grass-node_requirements.txt

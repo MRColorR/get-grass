@@ -15,15 +15,18 @@ RUN apt update && \
     chromium-driver \
     python3 \
     python3-pip \
-    python3-selenium && \
+    python3-selenium \
+    coreutils \
+    bash && \
     apt autoremove --purge -y && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt .
-RUN pip3 install -r requirements.txt
+COPY grass-node_requirements.txt /app/grass-node_requirements.txt
+RUN pip3 install -r /app/grass-node_requirements.txt
 
-# Copy the main Python script
-COPY grass-node_main.py .
+# Copy only the main Python script
+COPY grass-node_main.py /app/grass-node_main.py
+WORKDIR /app
 ENTRYPOINT [ "python3", "grass-node_main.py" ]
