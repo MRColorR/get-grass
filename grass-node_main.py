@@ -131,6 +131,7 @@ def main():
         
         # Re-initialize the browser with the new extension
         driver = webdriver.Chrome(options=driver_options)
+        logging.info('Browser re-initialized with the extension installed.')
         
         logging.info(f'Navigating to {extension_url} website...')
         driver.get(extension_url)
