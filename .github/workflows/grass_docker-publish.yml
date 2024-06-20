@@ -19,7 +19,7 @@ env:
   IMAGE_NAME: 'mrcolorrain/grass' # The name of the image to be built and pushed 
   TAG: 'latest'
   MAX_DELAY: 60 # Maximum delay in seconds
-  VERSION_FILE_PATH: '.githubworkflows.current_version' # Path to the version file
+  VERSION_FILE_PATH: '.githubworkflows.grass-current_version' # Path to the version file
   
 jobs:
   build-and-push:

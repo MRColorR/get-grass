@@ -1,10 +1,8 @@
 FROM debian:stable-slim
 
 # Set environment variables
-ENV EXTENSION_ID=ilehaonighjijnmpnagapkhpcdbhclfg
+ENV EXTENSION_ID=grass
 ENV EXTENSION_URL='https://app.getgrass.io/'
-ENV GIT_USERNAME=warren-bank
-ENV GIT_REPO=chrome-extension-downloader
 
 # Install necessary packages then clean up to reduce image size
 RUN apt update && \
@@ -16,19 +14,16 @@ RUN apt update && \
     chromium \
     chromium-driver \
     python3 \
+    python3-pip \
     python3-selenium && \
     apt autoremove --purge -y && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Download crx dowloader from git
-RUN git clone "https://github.com/${GIT_USERNAME}/${GIT_REPO}.git" && \
-    chmod +x ./${GIT_REPO}/bin/*
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt
 
-# Download the extension selected
-RUN ./${GIT_REPO}/bin/crxdl $EXTENSION_ID
-
-# Install python requirements
-COPY main.py .
-# RUN pip install -r requirements.txt
-ENTRYPOINT [ "python3", "main.py" ]
+# Copy the main Python script
+COPY grass-node_main.py .
+ENTRYPOINT [ "python3", "grass-node_main.py" ]

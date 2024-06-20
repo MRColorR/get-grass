@@ -1,4 +1,7 @@
 import os
+import requests
+import zipfile
+import io
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -9,23 +12,58 @@ import logging
 def setup_logging():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def get_access_token(email, password):
+    logging.info('Authenticating with the API...')
+    auth_url = 'https://api.getgrass.io/login'
+    payload = {
+        'email': email,
+        'password': password
+    }
+    response = requests.post(auth_url, json=payload)
+    response.raise_for_status()
+    return response.json()['access_token']
+
+def download_extension(access_token):
+    logging.info('Fetching the latest release information...')
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    response = requests.get('https://api.getgrass.io/extensionLatestRelease', headers=headers)
+    response.raise_for_status()
+    data = response.json()['result']['data']
+    
+    version = data['version']
+    download_url = data['links']['linux']
+    
+    logging.info(f'Downloading the latest release version {version}...')
+    response = requests.get(download_url)
+    response.raise_for_status()
+    
+    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+        z.extractall()
+    
+    return version
+
 def run():
     setup_logging()
     logging.info('Starting the script...')
-
+    
     # Read variables from the OS env
     email = os.getenv('GRASS_USER')
     password = os.getenv('GRASS_PASS')
     extension_id = os.getenv('EXTENSION_ID')
     extension_url = os.getenv('EXTENSION_URL')
-
+    
     # Check if credentials are provided
     if not email or not password:
         logging.error('No username or password provided. Please set the GRASS_USER and GRASS_PASS environment variables.')
         return  # Exit the script if credentials are not provided
 
+    access_token = get_access_token(email, password)
+    version = download_extension(access_token)
+
     chrome_options = Options()
-    chrome_options.add_extension(f'./{extension_id}.crx')
+    chrome_options.add_extension(f'./grass-community-node-linux-{version}.crx')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--headless=new')
     chrome_options.add_argument('--disable-dev-shm-usage')
