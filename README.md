@@ -1,4 +1,4 @@
-# Unofficial Get Grass Docker Container 🚀
+# Grass (GetGrass) Docker Container 🚀
 ![Docker Pulls](https://img.shields.io/docker/pulls/mrcolorrain/grass?style=flat-square&link=https://hub.docker.com/r/mrcolorrain/grass)
 ![Docker Stars](https://img.shields.io/docker/stars/mrcolorrain/grass?style=flat-square&link=https://hub.docker.com/r/mrcolorrain/grass)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/mrcolorr/get-grass/docker-publish.yml?style=flat&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fmrcolorrain%2Fgrass)
