@@ -120,7 +120,7 @@ def main():
         driver = webdriver.Chrome(options=driver_options)
                         
         # Enable developer mode in Chrome extension settings
-        time.sleep(random.randint(30, 70))
+        time.sleep(random.randint(3, 7))
         login_to_website(driver, email, password, extension_url)
         
         # Download and install the latest extension
