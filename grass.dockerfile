@@ -21,7 +21,7 @@ RUN apt update && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Download crx dowloader from git
+# Download crx downloader from git
 RUN git clone "https://github.com/${GIT_USERNAME}/${GIT_REPO}.git" && \
     chmod +x ./${GIT_REPO}/bin/*
 
