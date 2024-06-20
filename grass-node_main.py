@@ -5,43 +5,46 @@ import io
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import random
 import time
 import logging
+import json
 
 def setup_logging():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def download_extension(access_token):
+def download_extension(driver, extension_id):
     logging.info('Fetching the latest release information...')
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-    response = requests.get('https://api.getgrass.io/extensionLatestRelease', headers=headers, verify=False)
-    response.raise_for_status()
-    data = response.json()['result']['data']
     
+    driver.get('https://api.getgrass.io/extensionLatestRelease')
+    
+    # Execute JavaScript to get the JSON response from the page body
+    response_text = driver.execute_script("return document.body.textContent")
+    response_json = json.loads(response_text)
+    
+    data = response_json['result']['data']
     version = data['version']
-    download_url = data['links']['linux']
+    linux_download_url = data['links']['linux']
     
     logging.info(f'Downloading the latest release version {version}...')
-    response = requests.get(download_url, headers=headers, verify=False)
+    response = requests.get(linux_download_url, verify=False)
     response.raise_for_status()
     
-    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-        z.extractall()
+    crx_file_path = f'./{extension_id}.crx'
+    with open(crx_file_path, 'wb') as crx_file:
+        crx_file.write(response.content)
     
-    return version
+    # close the browser window
+    logging.info(f"Extension downloaded to {crx_file_path}")
+    logging.info('Closing the browser...')
+    driver.quit()
+    
+    return crx_file_path
 
-def login_and_get_cookies(email, password, extension_url):
-    chrome_options = Options()
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--headless=new')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0")
-    
-    driver = webdriver.Chrome(options=chrome_options)
+def login_and_get_driver(email, password, extension_url, driver_options):
+    driver = webdriver.Chrome(options=driver_options)
     driver.get(extension_url)
     
     logging.info('Entering credentials...')
@@ -51,15 +54,14 @@ def login_and_get_cookies(email, password, extension_url):
     passwd.send_keys(password)
     
     logging.info('Clicking the login button...')
-    button = driver.find_element(By.XPATH, "//button")
-    button.click()
-    logging.info('Waiting for response...')
-    time.sleep(random.randint(10, 20))
+    login_button = driver.find_element(By.XPATH, "//button")
+    login_button.click()
     
-    session_cookies = driver.get_cookies()
-    driver.quit()
+    logging.info('Waiting for login to complete...')
+    logout_button = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, "//button[text()='Logout']")))
+    logging.info('Login successful!')
     
-    return session_cookies
+    return driver
 
 def run():
     setup_logging()
@@ -76,32 +78,23 @@ def run():
         logging.error('No username or password provided. Please set the GRASS_USER and GRASS_PASS environment variables.')
         return  # Exit the script if credentials are not provided
 
-    # Perform initial login and get session cookies
-    session_cookies = login_and_get_cookies(email, password, extension_url)
+    # Define Chrome options
+    driver_options = Options()
+    driver_options.add_argument('--no-sandbox')
+    driver_options.add_argument('--disable-dev-shm-usage')
+    driver_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0")
     
-    # Use session cookies to get the API token
-    access_token = None
-    for cookie in session_cookies:
-        if cookie['name'] == 'your_cookie_name_for_token':  # Replace with actual cookie name
-            access_token = cookie['value']
-            break
+    # Perform initial login and get WebDriver instance
+    driver = login_and_get_driver(email, password, extension_url, driver_options)
     
-    if not access_token:
-        logging.error('Failed to retrieve access token from session cookies.')
-        return
-
     # Download and install the latest extension
-    version = download_extension(access_token)
+    crx_file_path = download_extension(driver, extension_id)
 
-    # Re-initialize the browser with the new extension
-    chrome_options = Options()
-    chrome_options.add_extension(f'./grass-community-node-linux-{version}.crx')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--headless=new')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0")
+    # Add the downloaded extension to the Chrome options
+    driver_options.add_extension(crx_file_path)
     
-    driver = webdriver.Chrome(options=chrome_options)
+    # Re-initialize the browser with the new extension
+    driver = webdriver.Chrome(options=driver_options)
 
     try:
         logging.info(f'Navigating to {extension_url} website...')
@@ -115,8 +108,8 @@ def run():
         passwd.send_keys(password)
         
         logging.info('Clicking the login button...')
-        button = driver.find_element(By.XPATH, "//button")
-        button.click()
+        login_button = driver.find_element(By.XPATH, "//button")
+        login_button.click()
         logging.info('Waiting for response...')
         time.sleep(random.randint(10, 50))
         
@@ -125,8 +118,8 @@ def run():
         time.sleep(random.randint(3, 7))
         
         logging.info('Clicking the extension button...')
-        button = driver.find_element(By.XPATH, "//button")
-        button.click()
+        extension_button = driver.find_element(By.XPATH, "//button")
+        extension_button.click()
         
         logging.info('Logged in successfully.')
         logging.info('Earning...')

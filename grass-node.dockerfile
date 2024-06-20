@@ -1,4 +1,4 @@
-FROM debian:stable-slim
+FROM theasp/novnc:latest
 
 # Set environment variables
 ENV EXTENSION_ID=grass
@@ -14,7 +14,7 @@ RUN apt update && \
     chromium \
     chromium-driver \
     python3 \
-    python3-pip \
+    python3-requests \
     python3-selenium \
     coreutils \
     bash && \
@@ -22,11 +22,12 @@ RUN apt update && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY grass-node_requirements.txt /app/grass-node_requirements.txt
-RUN pip3 install -r /app/grass-node_requirements.txt
-
 # Copy only the main Python script
 COPY grass-node_main.py /app/grass-node_main.py
 WORKDIR /app
+
+#Expose noVNC port
+EXPOSE  8080
+
+# Start app
 ENTRYPOINT [ "python3", "grass-node_main.py" ]
