@@ -1,4 +1,4 @@
-# Unofficial Get Grass Docker Container 🚀
+# Grass (GetGrass) Docker Container 🚀
 ![Docker Pulls](https://img.shields.io/docker/pulls/mrcolorrain/grass?style=flat-square&link=https://hub.docker.com/r/mrcolorrain/grass)
 ![Docker Stars](https://img.shields.io/docker/stars/mrcolorrain/grass?style=flat-square&link=https://hub.docker.com/r/mrcolorrain/grass)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/mrcolorr/get-grass/docker-publish.yml?style=flat&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fmrcolorrain%2Fgrass)
@@ -36,6 +36,29 @@ You can run it easily passing the appropriate environment variables.
         - GRASS_PASS=your_password
       restart: unless-stopped
   ```
+---
+## Grass-Node 📦
+This section provides instructions on how to use the grass-node extension if you want to use this instead of the standard grass extension available in the other image.
+- ### Docker cli 🐳
+  ```bash
+  docker run -d --name grass-node -h my_device -e USER_EMAIL=your_email -e USER_PASSWORD=your_password -p 8080:8080 mrcolorrain/grass-node
+  ```
+- ### Docker compose 🐳
+  ```yaml
+  version: "3.9"
+  services:
+    grass-node:
+      container_name: grass-node
+      hostname: my_device
+      image: mrcolorrain/grass-node
+      environment:
+        USER_EMAIL: your_email
+        USER_PASSWORD: your_password
+      ports:
+        - "8080:8080"
+      tty: true
+  ```
+
 
 ## Contributing 🤲
 Your contributions are welcome! If you'd like to improve the project or fix a bug, please fork the repository and submit a pull request. Let's make this project even better, together!

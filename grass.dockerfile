@@ -21,7 +21,7 @@ RUN apt update && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Download crx dowloader from git
+# Download crx downloader from git
 RUN git clone "https://github.com/${GIT_USERNAME}/${GIT_REPO}.git" && \
     chmod +x ./${GIT_REPO}/bin/*
 
@@ -29,6 +29,6 @@ RUN git clone "https://github.com/${GIT_USERNAME}/${GIT_REPO}.git" && \
 RUN ./${GIT_REPO}/bin/crxdl $EXTENSION_ID
 
 # Install python requirements
-COPY main.py .
+COPY grass_main.py .
 # RUN pip install -r requirements.txt
-ENTRYPOINT [ "python3", "main.py" ]
+ENTRYPOINT [ "python3", "grass_main.py" ]
