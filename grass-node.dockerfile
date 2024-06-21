@@ -1,8 +1,20 @@
 FROM theasp/novnc:latest
 
+# Set build arguments
+ARG EXTENSION_IDS
+ARG EXTENSION_URLS
+ARG CRX_DOWNLOAD_URLS
+
 # Set environment variables
-ENV EXTENSION_ID=grass
-ENV EXTENSION_URL='https://app.getgrass.io/'
+# Comma-separated list of extension IDs (extension chrome webstore id)
+ENV EXTENSION_IDS=${EXTENSION_IDS}
+# Comma-separated list of extension URLs (app dashboard website url)
+ENV EXTENSION_URLS=${EXTENSION_URLS}
+# Comma-separated list of CRX download URLs (either direct URLs or Chrome Web Store URLs)
+ENV CRX_DOWNLOAD_URLS=${CRX_DOWNLOAD_URLS}
+# In case of error multiply all backoff-timings of this value
+ENV MAX_RETRY_MULTIPLIER=3
+
 
 # Install necessary packages then clean up to reduce image size
 RUN set -ex; \
