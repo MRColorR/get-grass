@@ -90,7 +90,8 @@ jobs:
           docker buildx build \
             --platform linux/amd64,linux/arm64,linux/arm/v7 \
             -t ${{ env.IMAGE_NAME}}:${{ env.TAG }} \
-            --push .
+            -f grass.dockerfile \
+            . --push
 
       - name: Commit and push updates version file
         if: steps.version-check.outputs.trigger_build == 'true'
