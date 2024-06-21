@@ -69,11 +69,11 @@ def download_and_extract_extension(driver, extension_id, crx_download_url):
         return crx_file_path
     except (requests.RequestException, zipfile.BadZipFile, FileNotFoundError, json.JSONDecodeError, subprocess.CalledProcessError) as e:
         logging.error(f'Error downloading or extracting extension: {e}')
-        driver.quit()
+        safe_quit(driver)
         raise
     except Exception as e:
         logging.error(f'An unexpected error occurred during download and extraction: {e}')
-        driver.quit()
+        safe_quit(driver)
         raise
 
 def login_to_website(driver, email, password, login_url, max_retry_multiplier):
@@ -118,7 +118,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
                 time.sleep(random.randint(5, 10) * max_retry_multiplier)
                 continue
             else:
-                driver.quit()
+                safe_quit(driver)
                 raise
         except Exception as e:
             logging.error(f'An unexpected error occurred during login: {e}')
@@ -127,7 +127,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
                 time.sleep(random.randint(5, 10) * max_retry_multiplier)
                 continue
             else:
-                driver.quit()
+                safe_quit(driver)
                 raise
 
 def initialize_driver(crx_file_paths=None):
@@ -199,8 +199,17 @@ def refresh_and_check(driver, extension_id, window_handle):
         logging.info(f'Extension {extension_id} is still connected.')
     except TimeoutException:
         logging.error(f'Extension {extension_id} is not connected. Restarting...')
-        driver.quit()
+        safe_quit(driver)
         raise Exception(f'Extension {extension_id} lost connection.')
+
+def safe_quit(driver):
+    """Safely quit the WebDriver if it is still running."""
+    try:
+        if driver:
+            logging.info('Closing the browser...')
+            driver.quit()
+    except WebDriverException:
+        logging.warning('WebDriver already closed.')
 
 def main():
     """Main function to run the script."""
@@ -234,7 +243,7 @@ def main():
             crx_file_paths.append(crx_file_path)
         
         logging.info('Closing the browser and re-initializing it with the extensions installed...')
-        driver.quit()
+        safe_quit(driver)
         
         # Re-initialize the browser with the new extensions
         driver = initialize_driver(crx_file_paths)
@@ -255,13 +264,12 @@ def main():
                     refresh_and_check(driver, extension_id, extension_window_handles[extension_id])
             except Exception as e:
                 logging.error(f'An error occurred during the refresh cycle: {e}')
-                driver.quit()
+                safe_quit(driver)
                 time.sleep(60 * max_retry_multiplier)
                 main()
     except Exception as e:
         logging.error(f'An error occurred: {e}')
-        if 'driver' in locals():
-            driver.quit()
+        safe_quit(driver)
         time.sleep(60 * max_retry_multiplier)
         main()
 
