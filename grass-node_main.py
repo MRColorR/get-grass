@@ -167,7 +167,7 @@ def check_and_connect(driver, extension_id, max_retry_multiplier):
                 EC.presence_of_element_located((By.XPATH, "//p[contains(text(), 'Grass is Connected')]"))
             )
             logging.info('Grass is Connected message found.')
-            return True
+            return driver.current_window_handle  # Return the handle of the current window
         except TimeoutException:
             try:
                 connect_button = driver.find_element(By.XPATH, "//button[contains(text(), 'CONNECT GRASS')]")
@@ -186,6 +186,21 @@ def check_and_connect(driver, extension_id, max_retry_multiplier):
                 logging.error(f'An unexpected error occurred while attempting to connect: {e}')
                 raise
     return False
+
+def refresh_and_check(driver, extension_id, window_handle):
+    """Refresh the extension page and check if it remains connected."""
+    try:
+        driver.switch_to.window(window_handle)
+        logging.info(f'Refreshing extension {extension_id} page...')
+        driver.refresh()
+        WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.XPATH, "//p[contains(text(), 'Grass is Connected')]"))
+        )
+        logging.info(f'Extension {extension_id} is still connected.')
+    except TimeoutException:
+        logging.error(f'Extension {extension_id} is not connected. Restarting...')
+        driver.quit()
+        raise Exception(f'Extension {extension_id} lost connection.')
 
 def main():
     """Main function to run the script."""
@@ -208,6 +223,7 @@ def main():
     try:
         crx_file_paths = []
         driver = initialize_driver()  # Initialize WebDriver once for login and downloads
+        extension_window_handles = {}
 
         for extension_id, extension_url, crx_download_url in zip(extension_ids, extension_urls, crx_download_urls):
             # Perform initial login
@@ -227,24 +243,27 @@ def main():
         # Log in again and check the connection status for each extension
         for extension_id, extension_url in zip(extension_ids, extension_urls):
             login_to_website(driver, email, password, extension_url, max_retry_multiplier)
-            check_and_connect(driver, extension_id, max_retry_multiplier)
+            window_handle = check_and_connect(driver, extension_id, max_retry_multiplier)
+            extension_window_handles[extension_id] = window_handle
         
         logging.info('All extensions are connected successfully.')
+
+        while True:
+            try:
+                time.sleep(random.randint(3600, 14400))  # Wait for 1-4 hours before the next check
+                for extension_id in extension_ids:
+                    refresh_and_check(driver, extension_id, extension_window_handles[extension_id])
+            except Exception as e:
+                logging.error(f'An error occurred during the refresh cycle: {e}')
+                driver.quit()
+                time.sleep(60 * max_retry_multiplier)
+                main()
     except Exception as e:
         logging.error(f'An error occurred: {e}')
         if 'driver' in locals():
             driver.quit()
         time.sleep(60 * max_retry_multiplier)
         main()
-
-    while True:
-        try:
-            time.sleep(3600)
-        except KeyboardInterrupt:
-            logging.info('Stopping the script...')
-            if 'driver' in locals():
-                driver.quit()
-            break
 
 if __name__ == "__main__":
     main()
