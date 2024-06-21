@@ -115,6 +115,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
             logging.error(f'Error during login: {e}')
             if attempt < max_retries - 1:
                 logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
+                close_current_tab(driver)
                 time.sleep(random.randint(5, 10) * max_retry_multiplier)
                 continue
             else:
@@ -124,6 +125,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
             logging.error(f'An unexpected error occurred during login: {e}')
             if attempt < max_retries - 1:
                 logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
+                close_current_tab(driver)
                 time.sleep(random.randint(5, 10) * max_retry_multiplier)
                 continue
             else:
@@ -157,12 +159,12 @@ def initialize_driver(crx_file_paths=None):
 
 def check_and_connect(driver, extension_id, max_retry_multiplier):
     """Check if the extension is connected and if not, attempt to connect it."""
-    driver.execute_script("window.open('');")
-    driver.switch_to.window(driver.window_handles[-1])
-    driver.get(f'chrome-extension://{extension_id}/index.html')
     max_retries = max_retry_multiplier
     for attempt in range(max_retries):
         try:
+            driver.execute_script("window.open('');")
+            driver.switch_to.window(driver.window_handles[-1])
+            driver.get(f'chrome-extension://{extension_id}/index.html')
             WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "//p[contains(text(), 'Grass is Connected')]"))
             )
@@ -178,12 +180,14 @@ def check_and_connect(driver, extension_id, max_retry_multiplier):
                 logging.error('Neither "Grass is Connected" message nor "CONNECT GRASS" button found.')
                 if attempt < max_retries - 1:
                     logging.info(f'Retrying... ({attempt + 1}/{max_retries})')
+                    close_current_tab(driver)
                     time.sleep(random.randint(5, 10) * max_retry_multiplier)
                     continue
                 else:
                     raise Exception('Failed to find the required elements on the page after several attempts.')
             except Exception as e:
                 logging.error(f'An unexpected error occurred while attempting to connect: {e}')
+                close_current_tab(driver)
                 raise
     return False
 
@@ -201,6 +205,12 @@ def refresh_and_check(driver, extension_id, window_handle):
         logging.error(f'Extension {extension_id} is not connected. Restarting...')
         safe_quit(driver)
         raise Exception(f'Extension {extension_id} lost connection.')
+
+def close_current_tab(driver):
+    """Close the current tab and switch to the previous tab."""
+    if len(driver.window_handles) > 1:
+        driver.close()
+        driver.switch_to.window(driver.window_handles[-1])
 
 def safe_quit(driver):
     """Safely quit the WebDriver if it is still running."""
