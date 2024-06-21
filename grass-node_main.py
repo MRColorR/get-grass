@@ -80,7 +80,7 @@ def login_to_website(driver, email, password, login_url):
     """Log in to the website using the given WebDriver instance."""
     try:
         driver.get(login_url)
-        logging.info('Waiting for the login page to load...')
+        logging.info(f'Waiting for the login page {login_url}  to load...')
         
         WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.XPATH, "//button[text()='ACCESS MY ACCOUNT']"))
@@ -89,8 +89,10 @@ def login_to_website(driver, email, password, login_url):
         
         logging.info('Entering credentials...')
         username = driver.find_element(By.NAME, "user")
+        username.clear()
         username.send_keys(email)
         passwd = driver.find_element(By.NAME, "password")
+        passwd.clear()
         passwd.send_keys(password)
         time.sleep(random.randint(3, 7))
         
@@ -138,7 +140,7 @@ def initialize_driver(crx_file_paths=None):
         logging.error(f'An unexpected error occurred during WebDriver initialization: {e}')
         raise
 
-def check_and_connect(driver, extension_id, extension_url, max_retry_multiplier):
+def check_and_connect(driver, extension_id, max_retry_multiplier):
     """Check if the extension is connected and if not, attempt to connect it."""
     driver.get(f'chrome-extension://{extension_id}/index.html')
     max_retries = max_retry_multiplier
@@ -188,26 +190,27 @@ def main():
 
     try:
         crx_file_paths = []
-        for extension_id, crx_download_url in zip(extension_ids, crx_download_urls):
-            # Perform initial login and get WebDriver instance
-            driver = initialize_driver()
-            login_to_website(driver, email, password, extension_urls[extension_ids.index(extension_id)])
+        driver = initialize_driver()  # Initialize WebDriver once for login and downloads
+
+        for extension_id, extension_url, crx_download_url in zip(extension_ids, extension_urls, crx_download_urls):
+            # Perform initial login
+            login_to_website(driver, email, password, extension_url)
             
             # Download and install the latest extension
             crx_file_path = download_and_extract_extension(driver, extension_id, crx_download_url)
             crx_file_paths.append(crx_file_path)
-            
-            logging.info('Closing the browser and re-initializing it with the extensions installed...')
-            driver.quit()
+        
+        logging.info('Closing the browser and re-initializing it with the extensions installed...')
+        driver.quit()
         
         # Re-initialize the browser with the new extensions
         driver = initialize_driver(crx_file_paths)
         logging.info('Browser re-initialized with the extensions installed.')
         
-        # Log in again with the new extensions installed
+        # Log in again and check the connection status for each extension
         for extension_id, extension_url in zip(extension_ids, extension_urls):
             login_to_website(driver, email, password, extension_url)
-            check_and_connect(driver, extension_id, extension_url, max_retry_multiplier)
+            check_and_connect(driver, extension_id, max_retry_multiplier)
         
         logging.info('All extensions are connected successfully.')
     except Exception as e:
