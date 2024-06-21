@@ -305,10 +305,9 @@ def refresh_and_check(driver, extension_id, window_handle):
             EC.presence_of_element_located((By.XPATH, "//p[contains(text(), 'Grass is Connected')]"))
         )
         logging.info(f'Extension {extension_id} is still connected.')
-    except TimeoutException:
-        logging.error(f'Extension {extension_id} is not connected. Restarting...')
-        safe_quit(driver)
-        raise Exception(f'Extension {extension_id} lost connection.')
+    except Exception as e:
+        logging.error(f'Extension {extension_id} lost connection. Restarting...')
+        raise Exception(f'Extension {extension_id} lost connection: {e}')
 
 
 def close_current_tab(driver):
@@ -365,7 +364,9 @@ def safe_quit(driver):
 
 
 def main():
-    """Main function to run the script."""
+    """
+    Main function to run the script.
+    """
     setup_logging()
     logging.info('Starting the script...')
     
@@ -414,15 +415,14 @@ def main():
 
             while True:
                 try:
-                    time.sleep(random.randint(3600, 14400))  # Wait for 1-4 hours before the next check
+                    time.sleep(random.randint(36, 144))  # Wait for 1-4 hours before the next check
                     for extension_id in extension_ids:
                         refresh_and_check(driver, extension_id, extension_window_handles[extension_id])
                 except Exception as e:
                     logging.error(f'An error occurred during the refresh cycle: {e}')
                     safe_quit(driver)
-                    time.sleep(random.randint(11, 31) * (attempt + 1))
-                    continue  # Move to the next iteration (retry)
-            break
+                    break
+            continue  # try to re-initialize everything until max attempts
         except Exception as e:
             logging.error(f'An error occurred: {e}')
             safe_quit(driver)
