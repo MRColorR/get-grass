@@ -12,3 +12,9 @@ services:
       - "8080:8080"
     tty: true
     stdin_open: true
+    develop:
+      watch:
+        - action: sync
+          path: ./
+          target: /app/
+

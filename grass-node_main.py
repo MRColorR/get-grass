@@ -140,7 +140,8 @@ def main():
         login_to_website(driver, email, password, extension_url)
         
         logging.info('Accessing extension settings page...')
-        driver.get(f'chrome-extensions://?id={extension_id}')
+        time.sleep(300)
+        driver.get(f'chrome-extension://{extension_id}/index.html')
         time.sleep(random.randint(3, 7))
         
         logging.info('Clicking the extension button...')

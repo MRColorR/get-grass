@@ -53,7 +53,7 @@ def run():
 
         time.sleep(random.randint(10,50))
         logging.info('Accessing extension settings page...')
-        driver.get(f'chrome-extensions://?id={extension_id}')
+        driver.get(f'chrome-extension://{extension_id}/index.html')
         time.sleep(random.randint(3,7))
 
         logging.info('Clicking the extension button...')
