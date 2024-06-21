@@ -25,7 +25,11 @@ RUN set -ex; \
 
 # Copy the Supervisor configuration and Python script
 COPY grass-node_main.py /app/grass-node_main.py
-COPY conf.d/grass-node.conf /app/conf.d/grass-node.conf
+#COPY conf.d/grass-node.conf /app/conf.d/grass-node.conf
+
+# Copy the entrypoint wrapper script
+COPY entrypoint-wrapper.sh /app/entrypoint-wrapper.sh
+RUN chmod +x /app/entrypoint-wrapper.sh
 
 WORKDIR /app
 
@@ -33,4 +37,4 @@ WORKDIR /app
 EXPOSE 8080
 
 # Use the base image's entrypoint
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint-wrapper.sh"]

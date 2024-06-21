@@ -84,7 +84,7 @@ def download_and_extract_extension(driver, extension_id, crx_download_url):
 def login_to_website(driver, email, password, login_url, max_retry_multiplier):
     """Log in to the website using the given WebDriver instance."""
     max_retries = max_retry_multiplier
-    for attempt in range(max_retries):
+    for attempt in range(1, max_retries + 1):
         try:
             driver.execute_script("window.open('');")
             driver.switch_to.window(driver.window_handles[-1])
@@ -103,7 +103,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
             passwd = driver.find_element(By.NAME, "password")
             passwd.clear()
             passwd.send_keys(password)
-            time.sleep(random.randint(3, 7))
+            time.sleep(random.randint(3, 11))
             
             logging.info('Clicking the login button...')
             login_button = driver.find_element(By.XPATH, "//button[text()='ACCESS MY ACCOUNT']")
@@ -114,24 +114,24 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
                 EC.presence_of_element_located((By.XPATH, "//button[text()='Logout']"))
             )
             logging.info('Login successful!')
-            time.sleep(random.randint(3, 7))
+            time.sleep(random.randint(3, 11))
             return True
         except (NoSuchElementException, TimeoutException) as e:
             logging.error(f'Error during login: {e}')
-            if attempt < max_retries - 1:
-                logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
+            if attempt < max_retries:
+                logging.info(f'Retrying login... ({attempt}/{max_retries})')
                 close_current_tab(driver)
-                time.sleep(random.randint(5, 10) * max_retry_multiplier)
+                time.sleep(random.randint(3, 11) * attempt)
                 continue  # Move to the next iteration (retry)
             else:
                 safe_quit(driver)
                 raise
         except Exception as e:
             logging.error(f'An unexpected error occurred during login: {e}')
-            if attempt < max_retries - 1:
-                logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
+            if attempt < max_retries:
+                logging.info(f'Retrying login... ({attempt}/{max_retries})')
                 close_current_tab(driver)
-                time.sleep(random.randint(5, 10) * max_retry_multiplier)
+                time.sleep(random.randint(3, 11) * attempt)
                 continue  # Move to the next iteration (retry)
             else:
                 safe_quit(driver)
@@ -165,7 +165,7 @@ def initialize_driver(crx_file_paths=None):
 def check_and_connect(driver, extension_id, max_retry_multiplier):
     """Check if the extension is connected and if not, attempt to connect it."""
     max_retries = max_retry_multiplier
-    for attempt in range(max_retries):
+    for attempt in range(1, max_retries + 1):
         try:
             driver.execute_script("window.open('');")
             driver.switch_to.window(driver.window_handles[-1])
@@ -180,13 +180,13 @@ def check_and_connect(driver, extension_id, max_retry_multiplier):
                 connect_button = driver.find_element(By.XPATH, "//button[contains(text(), 'CONNECT GRASS')]")
                 logging.info('Connect Grass button found. Clicking the button...')
                 connect_button.click()
-                time.sleep(random.randint(5, 10))  # wait for the connection process
+                time.sleep(random.randint(3, 11))  # wait for the connection process
             except NoSuchElementException:
                 logging.error('Neither "Grass is Connected" message nor "CONNECT GRASS" button found.')
-                if attempt < max_retries - 1:
-                    logging.info(f'Retrying... ({attempt + 1}/{max_retries})')
+                if attempt < max_retries:
+                    logging.info(f'Retrying... ({attempt}/{max_retries})')
                     close_current_tab(driver)
-                    time.sleep(random.randint(5, 10) * max_retry_multiplier)
+                    time.sleep(random.randint(3, 11) * attempt)
                     continue  # Move to the next iteration (retry)
                 else:
                     raise Exception('Failed to find the required elements on the page after several attempts.')
@@ -244,49 +244,56 @@ def main():
         logging.error('No username or password provided. Please set the USER_EMAIL and USER_PASSWORD environment variables.')
         return  # Exit the script if credentials are not provided
 
-    try:
-        crx_file_paths = []
-        driver = initialize_driver()  # Initialize WebDriver once for login and downloads
-        extension_window_handles = {}
+    max_retries = max_retry_multiplier
+    for attempt in range(1, max_retries + 1):
+        try:
+            crx_file_paths = []
+            driver = initialize_driver()  # Initialize WebDriver once for login and downloads
+            extension_window_handles = {}
 
-        for extension_id, extension_url, crx_download_url in zip(extension_ids, extension_urls, crx_download_urls):
-            # Perform initial login
-            login_to_website(driver, email, password, extension_url, max_retry_multiplier)
+            for extension_id, extension_url, crx_download_url in zip(extension_ids, extension_urls, crx_download_urls):
+                # Perform initial login
+                login_to_website(driver, email, password, extension_url, max_retry_multiplier)
+                
+                # Download and install the latest extension
+                crx_file_path = download_and_extract_extension(driver, extension_id, crx_download_url)
+                crx_file_paths.append(crx_file_path)
             
-            # Download and install the latest extension
-            crx_file_path = download_and_extract_extension(driver, extension_id, crx_download_url)
-            crx_file_paths.append(crx_file_path)
-        
-        logging.info('Closing the browser and re-initializing it with the extensions installed...')
-        safe_quit(driver)
-        
-        # Re-initialize the browser with the new extensions
-        driver = initialize_driver(crx_file_paths)
-        logging.info('Browser re-initialized with the extensions installed.')
-        
-        # Log in again and check the connection status for each extension
-        for extension_id, extension_url in zip(extension_ids, extension_urls):
-            login_to_website(driver, email, password, extension_url, max_retry_multiplier)
-            window_handle = check_and_connect(driver, extension_id, max_retry_multiplier)
-            extension_window_handles[extension_id] = window_handle
-        
-        logging.info('All extensions are connected successfully.')
+            logging.info('Closing the browser and re-initializing it with the extensions installed...')
+            safe_quit(driver)
+            
+            # Re-initialize the browser with the new extensions
+            driver = initialize_driver(crx_file_paths)
+            logging.info('Browser re-initialized with the extensions installed.')
+            
+            # Log in again and check the connection status for each extension
+            for extension_id, extension_url in zip(extension_ids, extension_urls):
+                login_to_website(driver, email, password, extension_url, max_retry_multiplier)
+                window_handle = check_and_connect(driver, extension_id, max_retry_multiplier)
+                extension_window_handles[extension_id] = window_handle
+            
+            logging.info('All extensions are connected successfully.')
 
-        while True:
-            try:
-                time.sleep(random.randint(3600, 14400))  # Wait for 1-4 hours before the next check
-                for extension_id in extension_ids:
-                    refresh_and_check(driver, extension_id, extension_window_handles[extension_id])
-            except Exception as e:
-                logging.error(f'An error occurred during the refresh cycle: {e}')
-                safe_quit(driver)
-                time.sleep(60 * max_retry_multiplier)
-                main()
-    except Exception as e:
-        logging.error(f'An error occurred: {e}')
-        safe_quit(driver)
-        time.sleep(60 * max_retry_multiplier)
-        main()
+            while True:
+                try:
+                    time.sleep(random.randint(3600, 14400))  # Wait for 1-4 hours before the next check
+                    for extension_id in extension_ids:
+                        refresh_and_check(driver, extension_id, extension_window_handles[extension_id])
+                except Exception as e:
+                    logging.error(f'An error occurred during the refresh cycle: {e}')
+                    safe_quit(driver)
+                    time.sleep(random.randint(11, 31) * attempt)
+                    continue  # Move to the next iteration (retry)
+            break  # Exit the outer retry loop if everything is successful
+        except Exception as e:
+            logging.error(f'An error occurred: {e}')
+            safe_quit(driver)
+            if attempt < max_retries:
+                logging.info(f'Backing off... attempt {attempt}/{max_retries}')
+                time.sleep(random.randint(11, 31) * attempt)
+                continue  # Move to the next iteration (retry)
+            else:
+                raise  # Raise the exception if the maximum number of retries is reached
 
 if __name__ == "__main__":
     main()
