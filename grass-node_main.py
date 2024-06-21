@@ -76,44 +76,59 @@ def download_and_extract_extension(driver, extension_id, crx_download_url):
         driver.quit()
         raise
 
-def login_to_website(driver, email, password, login_url):
+def login_to_website(driver, email, password, login_url, max_retry_multiplier):
     """Log in to the website using the given WebDriver instance."""
-    try:
-        driver.get(login_url)
-        logging.info(f'Waiting for the login page {login_url}  to load...')
-        
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.XPATH, "//button[text()='ACCESS MY ACCOUNT']"))
-        )
-        logging.info('Login page loaded successfully!')
-        
-        logging.info('Entering credentials...')
-        username = driver.find_element(By.NAME, "user")
-        username.clear()
-        username.send_keys(email)
-        passwd = driver.find_element(By.NAME, "password")
-        passwd.clear()
-        passwd.send_keys(password)
-        time.sleep(random.randint(3, 7))
-        
-        logging.info('Clicking the login button...')
-        login_button = driver.find_element(By.XPATH, "//button[text()='ACCESS MY ACCOUNT']")
-        login_button.click()
-        
-        logging.info('Waiting for login to complete...')
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.XPATH, "//button[text()='Logout']"))
-        )
-        logging.info('Login successful!')
-        time.sleep(random.randint(3, 7))
-    except (NoSuchElementException, TimeoutException) as e:
-        logging.error(f'Error during login: {e}')
-        driver.quit()
-        raise
-    except Exception as e:
-        logging.error(f'An unexpected error occurred during login: {e}')
-        driver.quit()
-        raise
+    max_retries = max_retry_multiplier
+    for attempt in range(max_retries):
+        try:
+            driver.execute_script("window.open('');")
+            driver.switch_to.window(driver.window_handles[-1])
+            driver.get(login_url)
+            logging.info(f'Waiting for the login page {login_url} to load...')
+            
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.XPATH, "//button[text()='ACCESS MY ACCOUNT']"))
+            )
+            logging.info('Login page loaded successfully!')
+            
+            logging.info('Entering credentials...')
+            username = driver.find_element(By.NAME, "user")
+            username.clear()
+            username.send_keys(email)
+            passwd = driver.find_element(By.NAME, "password")
+            passwd.clear()
+            passwd.send_keys(password)
+            time.sleep(random.randint(3, 7))
+            
+            logging.info('Clicking the login button...')
+            login_button = driver.find_element(By.XPATH, "//button[text()='ACCESS MY ACCOUNT']")
+            login_button.click()
+            
+            logging.info('Waiting for login to complete...')
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.XPATH, "//button[text()='Logout']"))
+            )
+            logging.info('Login successful!')
+            time.sleep(random.randint(3, 7))
+            return True
+        except (NoSuchElementException, TimeoutException) as e:
+            logging.error(f'Error during login: {e}')
+            if attempt < max_retries - 1:
+                logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
+                time.sleep(random.randint(5, 10) * max_retry_multiplier)
+                continue
+            else:
+                driver.quit()
+                raise
+        except Exception as e:
+            logging.error(f'An unexpected error occurred during login: {e}')
+            if attempt < max_retries - 1:
+                logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
+                time.sleep(random.randint(5, 10) * max_retry_multiplier)
+                continue
+            else:
+                driver.quit()
+                raise
 
 def initialize_driver(crx_file_paths=None):
     """Initialize the WebDriver with specified options and extensions."""
@@ -142,6 +157,8 @@ def initialize_driver(crx_file_paths=None):
 
 def check_and_connect(driver, extension_id, max_retry_multiplier):
     """Check if the extension is connected and if not, attempt to connect it."""
+    driver.execute_script("window.open('');")
+    driver.switch_to.window(driver.window_handles[-1])
     driver.get(f'chrome-extension://{extension_id}/index.html')
     max_retries = max_retry_multiplier
     for attempt in range(max_retries):
@@ -194,7 +211,7 @@ def main():
 
         for extension_id, extension_url, crx_download_url in zip(extension_ids, extension_urls, crx_download_urls):
             # Perform initial login
-            login_to_website(driver, email, password, extension_url)
+            login_to_website(driver, email, password, extension_url, max_retry_multiplier)
             
             # Download and install the latest extension
             crx_file_path = download_and_extract_extension(driver, extension_id, crx_download_url)
@@ -209,7 +226,7 @@ def main():
         
         # Log in again and check the connection status for each extension
         for extension_id, extension_url in zip(extension_ids, extension_urls):
-            login_to_website(driver, email, password, extension_url)
+            login_to_website(driver, email, password, extension_url, max_retry_multiplier)
             check_and_connect(driver, extension_id, max_retry_multiplier)
         
         logging.info('All extensions are connected successfully.')
