@@ -4,10 +4,12 @@ services:
       context: .
       dockerfile: grass-node.dockerfile
     environment:
-      GRASS_USER: ${GRASS_USER}
-      GRASS_PASS: ${GRASS_PASS}
-      EXTENSION_ID: ${EXTENSION_ID}
-      EXTENSION_URL: ${EXTENSION_URL}
+      USER_EMAIL: ${USER_EMAIL}
+      USER_PASSWORD: ${USER_PASSWORD}
+      EXTENSION_IDS: ${EXTENSION_IDS}
+      EXTENSION_URLS: ${EXTENSION_URLS}
+      CRX_DOWNLOAD_URLS: ${CRX_DOWNLOAD_URLS}
+      MAX_RETRY_MULTIPLIER: ${MAX_RETRY_MULTIPLIER}
     ports:
       - "8080:8080"
     tty: true
