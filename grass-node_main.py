@@ -21,6 +21,11 @@ def setup_logging():
 
 def download_and_extract_extension(driver, extension_id, crx_download_url):
     """Download and extract the latest version of the extension using the authenticated session."""
+    extensions_dir = 'extensions'
+    os.makedirs(extensions_dir, exist_ok=True)
+    extension_dir = os.path.join(extensions_dir, extension_id)
+    os.makedirs(extension_dir, exist_ok=True)
+    
     try:
         if crx_download_url.startswith('https://chromewebstore.google.com'):
             # Clone the CRX downloader repository and use it to download the extension
@@ -29,8 +34,8 @@ def download_and_extract_extension(driver, extension_id, crx_download_url):
             logging.info(f'Using {GIT_USERNAME}/{GIT_REPO} to download the extension CRX file from the Chrome Web Store...')
             subprocess.run(["git", "clone", f"https://github.com/{GIT_USERNAME}/{GIT_REPO}.git"], check=True)
             subprocess.run(["chmod", "+x", f"./{GIT_REPO}/bin/*"], check=True)
-            subprocess.run([f"./{GIT_REPO}/bin/crxdl", extension_id], check=True)
-            crx_file_path = f"./{extension_id}.crx"
+            crx_file_path = os.path.join(extension_dir, f"{extension_id}.crx")
+            subprocess.run([f"./{GIT_REPO}/bin/crxdl", extension_id, crx_file_path], check=True)
         else:
             logging.info('Using the defined URL to download the extension CRX file from the provider website...')
             logging.info('Fetching the latest release information...')
@@ -46,17 +51,17 @@ def download_and_extract_extension(driver, extension_id, crx_download_url):
             response = requests.get(linux_download_url, verify=False)
             response.raise_for_status()
             
-            zip_file_path = f'./{extension_id}.zip'
+            zip_file_path = os.path.join(extension_dir, f"{extension_id}.zip")
             with open(zip_file_path, 'wb') as zip_file:
                 zip_file.write(response.content)
                 logging.info(f"Downloaded extension to {zip_file_path}")
             
             logging.info(f"Extracting the extension from {zip_file_path}")
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-                zip_ref.extractall('./')
+                zip_ref.extractall(extension_dir)
             
             crx_file_path = None
-            for root, _, files in os.walk('./'):
+            for root, dirs, files in os.walk(extension_dir):
                 for file in files:
                     if file.endswith('.crx'):
                         crx_file_path = os.path.join(root, file)
@@ -117,7 +122,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
                 logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
                 close_current_tab(driver)
                 time.sleep(random.randint(5, 10) * max_retry_multiplier)
-                continue
+                continue  # Move to the next iteration (retry)
             else:
                 safe_quit(driver)
                 raise
@@ -127,7 +132,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
                 logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
                 close_current_tab(driver)
                 time.sleep(random.randint(5, 10) * max_retry_multiplier)
-                continue
+                continue  # Move to the next iteration (retry)
             else:
                 safe_quit(driver)
                 raise
@@ -182,7 +187,7 @@ def check_and_connect(driver, extension_id, max_retry_multiplier):
                     logging.info(f'Retrying... ({attempt + 1}/{max_retries})')
                     close_current_tab(driver)
                     time.sleep(random.randint(5, 10) * max_retry_multiplier)
-                    continue
+                    continue  # Move to the next iteration (retry)
                 else:
                     raise Exception('Failed to find the required elements on the page after several attempts.')
             except Exception as e:
