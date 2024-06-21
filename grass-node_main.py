@@ -15,9 +15,11 @@ from selenium.common.exceptions import (
     NoSuchElementException, TimeoutException, WebDriverException
 )
 
+
 def setup_logging():
     """Set up logging for the script."""
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 def download_and_extract_extension(driver, extension_id, crx_download_url):
     """Download and extract the latest version of the extension using the authenticated session."""
@@ -28,58 +30,63 @@ def download_and_extract_extension(driver, extension_id, crx_download_url):
     
     try:
         if crx_download_url.startswith('https://chromewebstore.google.com'):
-            # Clone the CRX downloader repository and use it to download the extension
-            GIT_USERNAME = 'warren-bank'
-            GIT_REPO = 'chrome-extension-downloader'
-            logging.info(f'Using {GIT_USERNAME}/{GIT_REPO} to download the extension CRX file from the Chrome Web Store...')
-            subprocess.run(["git", "clone", f"https://github.com/{GIT_USERNAME}/{GIT_REPO}.git"], check=True)
-            subprocess.run(["chmod", "+x", f"./{GIT_REPO}/bin/*"], check=True)
-            crx_file_path = os.path.join(extension_dir, f"{extension_id}.crx")
-            subprocess.run([f"./{GIT_REPO}/bin/crxdl", extension_id, crx_file_path], check=True)
+            crx_file_path = download_from_chrome_webstore(extension_id, extension_dir)
         else:
-            logging.info('Using the defined URL to download the extension CRX file from the provider website...')
-            logging.info('Fetching the latest release information...')
-            driver.get(crx_download_url)
-            response_text = driver.execute_script("return document.body.textContent")
-            response_json = json.loads(response_text)
-            
-            data = response_json['result']['data']
-            version = data['version']
-            linux_download_url = data['links']['linux']
-            
-            logging.info(f'Downloading the latest release version {version}...')
-            response = requests.get(linux_download_url, verify=False)
-            response.raise_for_status()
-            
-            zip_file_path = os.path.join(extension_dir, f"{extension_id}.zip")
-            with open(zip_file_path, 'wb') as zip_file:
-                zip_file.write(response.content)
-                logging.info(f"Downloaded extension to {zip_file_path}")
-            
-            logging.info(f"Extracting the extension from {zip_file_path}")
-            with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-                zip_ref.extractall(extension_dir)
-            
-            crx_file_path = None
-            for root, dirs, files in os.walk(extension_dir):
-                for file in files:
-                    if file.endswith('.crx'):
-                        crx_file_path = os.path.join(root, file)
-                        break
-            
-            if not crx_file_path:
-                raise FileNotFoundError('CRX file not found in the extracted folder.')
-
+            crx_file_path = download_from_provider_website(driver, extension_id, crx_download_url, extension_dir)
+        
         logging.info(f"Extension extracted to {crx_file_path}")
         return crx_file_path
-    except (requests.RequestException, zipfile.BadZipFile, FileNotFoundError, json.JSONDecodeError, subprocess.CalledProcessError) as e:
+    except Exception as e:
         logging.error(f'Error downloading or extracting extension: {e}')
         safe_quit(driver)
         raise
-    except Exception as e:
-        logging.error(f'An unexpected error occurred during download and extraction: {e}')
-        safe_quit(driver)
-        raise
+
+
+def download_from_chrome_webstore(extension_id, extension_dir):
+    """Download extension from the Chrome Web Store."""
+    GIT_USERNAME = 'warren-bank'
+    GIT_REPO = 'chrome-extension-downloader'
+    logging.info(f'Using {GIT_USERNAME}/{GIT_REPO} to download the extension CRX file from the Chrome Web Store...')
+    subprocess.run(["git", "clone", f"https://github.com/{GIT_USERNAME}/{GIT_REPO}.git"], check=True)
+    subprocess.run(["chmod", "+x", f"./{GIT_REPO}/bin/*"], check=True)
+    crx_file_path = os.path.join(extension_dir, f"{extension_id}.crx")
+    subprocess.run([f"./{GIT_REPO}/bin/crxdl", extension_id, crx_file_path], check=True)
+    return crx_file_path
+
+
+def download_from_provider_website(driver, extension_id, crx_download_url, extension_dir):
+    """Download extension from the provider website."""
+    logging.info('Using the defined URL to download the extension CRX file from the provider website...')
+    logging.info('Fetching the latest release information...')
+    driver.get(crx_download_url)
+    response_text = driver.execute_script("return document.body.textContent")
+    response_json = json.loads(response_text)
+    
+    data = response_json['result']['data']
+    version = data['version']
+    linux_download_url = data['links']['linux']
+    
+    logging.info(f'Downloading the latest release version {version}...')
+    response = requests.get(linux_download_url, verify=False)
+    response.raise_for_status()
+    
+    zip_file_path = os.path.join(extension_dir, f"{extension_id}.zip")
+    with open(zip_file_path, 'wb') as zip_file:
+        zip_file.write(response.content)
+        logging.info(f"Downloaded extension to {zip_file_path}")
+    
+    logging.info(f"Extracting the extension from {zip_file_path}")
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        zip_ref.extractall(extension_dir)
+    
+    for root, dirs, files in os.walk(extension_dir):
+        for file in files:
+            if file.endswith('.crx'):
+                logging.info(f"Found CRX file: {file}")
+                return os.path.join(root, file)
+    
+    raise FileNotFoundError('CRX file not found in the extracted folder.')
+
 
 def login_to_website(driver, email, password, login_url, max_retry_multiplier):
     """Log in to the website using the given WebDriver instance."""
@@ -137,6 +144,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
                 safe_quit(driver)
                 raise
 
+
 def initialize_driver(crx_file_paths=None):
     """Initialize the WebDriver with specified options and extensions."""
     driver_options = Options()
@@ -161,6 +169,7 @@ def initialize_driver(crx_file_paths=None):
     except Exception as e:
         logging.error(f'An unexpected error occurred during WebDriver initialization: {e}')
         raise
+
 
 def check_and_connect(driver, extension_id, max_retry_multiplier):
     """Check if the extension is connected and if not, attempt to connect it."""
@@ -196,6 +205,7 @@ def check_and_connect(driver, extension_id, max_retry_multiplier):
                 raise
     return False
 
+
 def refresh_and_check(driver, extension_id, window_handle):
     """Refresh the extension page and check if it remains connected."""
     try:
@@ -211,11 +221,13 @@ def refresh_and_check(driver, extension_id, window_handle):
         safe_quit(driver)
         raise Exception(f'Extension {extension_id} lost connection.')
 
+
 def close_current_tab(driver):
     """Close the current tab and switch to the previous tab."""
     if len(driver.window_handles) > 1:
         driver.close()
         driver.switch_to.window(driver.window_handles[-1])
+
 
 def safe_quit(driver):
     """Safely quit the WebDriver if it is still running."""
@@ -225,6 +237,7 @@ def safe_quit(driver):
             driver.quit()
     except WebDriverException:
         logging.warning('WebDriver already closed.')
+
 
 def main():
     """Main function to run the script."""
@@ -294,6 +307,7 @@ def main():
                 continue  # Move to the next iteration (retry)
             else:
                 raise  # Raise the exception if the maximum number of retries is reached
+
 
 if __name__ == "__main__":
     main()
