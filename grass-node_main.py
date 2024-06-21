@@ -415,7 +415,7 @@ def main():
 
             while True:
                 try:
-                    time.sleep(random.randint(36, 144))  # Wait for 1-4 hours before the next check
+                    time.sleep(random.randint(3600, 14400))  # Wait for 1-4 hours before the next check
                     for extension_id in extension_ids:
                         refresh_and_check(driver, extension_id, extension_window_handles[extension_id])
                 except Exception as e:
