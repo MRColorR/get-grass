@@ -218,7 +218,10 @@ def initialize_driver(crx_file_paths=None):
     driver_options.add_argument('--no-sandbox')
     driver_options.add_argument('--disable-dev-shm-usage')
     driver_options.add_experimental_option('prefs', {'extensions.ui.developer_mode': True})
-    # driver_options.add_argument('--headless')  # Uncomment to run Chrome in headless mode
+
+    if os.getenv('HEADLESS_MODE', 'false').lower() == 'true':
+        driver_options.add_argument('--headless')
+
     driver_options.add_argument(
         "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0"
     )
