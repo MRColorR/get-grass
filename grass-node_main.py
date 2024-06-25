@@ -219,7 +219,7 @@ def initialize_driver(crx_file_paths=None):
     driver_options.add_argument('--disable-dev-shm-usage')
     driver_options.add_experimental_option('prefs', {'extensions.ui.developer_mode': True})
 
-    if os.getenv('HEADLESS_MODE', 'false').lower() == 'true':
+    if os.getenv('HEADLESS', 'false').lower() == 'true':
         driver_options.add_argument('--headless')
 
     driver_options.add_argument(
