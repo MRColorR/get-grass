@@ -41,7 +41,7 @@ You can run it easily passing the appropriate environment variables.
 This section provides instructions on how to use the grass-node extension if you want to use this instead of the standard grass extension available in the other image.
 - ### Docker cli 🐳
   ```bash
-  docker run -d --name grass-node -h my_device -e USER_EMAIL=your_email -e USER_PASSWORD=your_password -p 8080:8080 mrcolorrain/grass-node
+  docker run -d --name grass-node -h my_device -e USER_EMAIL=your_email -e USER_PASSWORD=your_password -p 5900:5900 -p 6080:6080 mrcolorrain/grass-node
   ```
 - ### Docker compose 🐳
   ```yaml
@@ -55,8 +55,8 @@ This section provides instructions on how to use the grass-node extension if you
         USER_EMAIL: your_email
         USER_PASSWORD: your_password
       ports:
-        - "8080:8080"
-      tty: true
+        - "5900:5900"
+        - "6080:6080"
   ```
 
 

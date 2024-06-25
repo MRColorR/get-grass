@@ -10,8 +10,10 @@ services:
       EXTENSION_URLS: ${EXTENSION_URLS}
       CRX_DOWNLOAD_URLS: ${CRX_DOWNLOAD_URLS}
       MAX_RETRY_MULTIPLIER: ${MAX_RETRY_MULTIPLIER}
+      
     ports:
-      - "8080:8080"
+      - "5900:5900"
+      - "6080:6080"
     tty: true
     stdin_open: true
     develop:

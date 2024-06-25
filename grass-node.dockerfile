@@ -1,4 +1,4 @@
-FROM theasp/novnc:latest
+FROM mrcolorrain/vnc-browser:debian
 
 # Set build arguments
 ARG EXTENSION_IDS
@@ -17,7 +17,7 @@ ENV MAX_RETRY_MULTIPLIER=3
 
 
 # Install necessary packages then clean up to reduce image size
-RUN set -ex; \
+RUN set -e; \
     apt update && \
     apt upgrade -y && \
     apt install -qqy \
@@ -37,7 +37,6 @@ RUN set -ex; \
 
 # Copy the Supervisor configuration and Python script
 COPY grass-node_main.py /app/grass-node_main.py
-#COPY conf.d/grass-node.conf /app/conf.d/grass-node.conf
 
 # Copy the entrypoint wrapper script
 COPY entrypoint-wrapper.sh /app/entrypoint-wrapper.sh
@@ -45,8 +44,14 @@ RUN chmod +x /app/entrypoint-wrapper.sh
 
 WORKDIR /app
 
-# Expose noVNC port
-EXPOSE 8080
+# Expose VNC and noVNC ports
+EXPOSE 5900 6080 
 
 # Use the base image's entrypoint
-ENTRYPOINT ["/app/entrypoint-wrapper.sh"]
+# ENTRYPOINT ["/app/entrypoint-wrapper.sh"]
+
+# New base image permits entrypoint customization
+ENV CUSTOMIZE=true
+ENV AUTO_START_BROWSER=false
+ENV AUTO_START_XTERM=false
+COPY grass-node_main.py /app/custom_entrypoints_scripts
