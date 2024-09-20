@@ -13,21 +13,21 @@ on:
   workflow_dispatch:
 
 permissions: # The permissions that the workflow has. The permissions are inherited from the job and can be customized.
-    contents: write
+  contents: write
 
 env:
   IMAGE_NAME: 'mrcolorrain/grass' # The name of the image to be built and pushed 
   TAG: 'latest'
   MAX_DELAY: 60 # Maximum delay in seconds
   VERSION_FILE_PATH: '.githubworkflows.grass-current_version' # Path to the version file
-  
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Randomized Delay
         run: |
-          sleep $((RANDOM % $MAX_DELAY))
+          sleep $((RANDOM % ${{ env.MAX_DELAY }}))
       
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,29 +44,35 @@ jobs:
               echo "Unsupported architecture: $ARCH" && exit 1
           fi
           echo "Detected runner arch: $ARCH"
+          
           wget -q "https://chromewebstore.google.com/detail/${{ secrets.EXTENSION_ID }}" -O extension_page.html
-          cat extension_page.html | grep -Po '(?<=\\\"version\\\": \\\")([0-9]+\.[0-9]+\.[0-9]+)(?=\\\",)' > latest_version.txt
-          LATEST_VERSION=$(cat latest_version.txt)
+
+          # Extract all version numbers matching the pattern
+          grep -Po '(?<=\\\"version\\\": \\\")([0-9]+\.[0-9]+\.[0-9]+)(?=\\\",)' extension_page.html > versions.txt
+
+          # Sort the versions using version sort and select the highest one
+          LATEST_VERSION=$(sort -V versions.txt | tail -n1)
           echo "Latest Version detected: $LATEST_VERSION"
 
           # Check the current version stored in the repository
-          if [ -f ${{ env.VERSION_FILE_PATH }} ]; then
+          if [ -f "${{ env.VERSION_FILE_PATH }}" ]; then
               echo "Current version file ${{ env.VERSION_FILE_PATH }} found"
           else
-            echo "Can not find current version file ${{ env.VERSION_FILE_PATH }}. Creating a new one"
-              mkdir -p $(dirname ${{ env.VERSION_FILE_PATH }})
-              echo 'none' > ${{ env.VERSION_FILE_PATH }}
+              echo "Cannot find current version file ${{ env.VERSION_FILE_PATH }}. Creating a new one"
+              mkdir -p "$(dirname "${{ env.VERSION_FILE_PATH }}")"
+              echo 'none' > "${{ env.VERSION_FILE_PATH }}"
           fi
-          CURRENT_VERSION=$(cat ${{ env.VERSION_FILE_PATH }})
+          CURRENT_VERSION=$(cat "${{ env.VERSION_FILE_PATH }}")
           echo "Current Version: $CURRENT_VERSION"
-          if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ] || [ "${{ github.event_name }}" = "workflow_dispatch"  ]; then
+
+          if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
               echo "New version detected: $LATEST_VERSION. Triggering build..."
-              echo "latest_version=$LATEST_VERSION" >> $GITHUB_ENV
-              echo "$LATEST_VERSION" > ${{ env.VERSION_FILE_PATH }}
-              echo "trigger_build=true" >> $GITHUB_OUTPUT
+              echo "latest_version=$LATEST_VERSION" >> "$GITHUB_ENV"
+              echo "$LATEST_VERSION" > "${{ env.VERSION_FILE_PATH }}"
+              echo "trigger_build=true" >> "$GITHUB_OUTPUT"
           else
               echo "No new version detected. Skipping build"
-              echo "trigger_build=false" >> $GITHUB_OUTPUT
+              echo "trigger_build=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Setup QEMU
@@ -89,16 +95,16 @@ jobs:
         run: |
           docker buildx build \
             --platform linux/amd64,linux/arm64,linux/arm/v7 \
-            -t ${{ env.IMAGE_NAME}}:${{ env.TAG }} \
+            -t ${{ env.IMAGE_NAME }}:${{ env.TAG }} \
             -f grass.dockerfile \
             . --push
 
-      - name: Commit and push updates version file
+      - name: Commit and push updated version file
         if: steps.version-check.outputs.trigger_build == 'true'
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'mrcolorr@users.noreply.github.com'
-          git add ${{ env.VERSION_FILE_PATH }}
+          git add "${{ env.VERSION_FILE_PATH }}"
           git commit -m "Update version file to ${{ env.latest_version }}"
           git push
 
@@ -107,6 +113,5 @@ jobs:
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'mrcolorr@users.noreply.github.com'
-          git tag -a ${{ env.latest_version }} -m "Update to ${{ env.latest_version }}"
-          git push origin ${{ env.latest_version }}
-
+          git tag -a "${{ env.latest_version }}" -m "Update to ${{ env.latest_version }}"
+          git push origin "${{ env.latest_version }}"
