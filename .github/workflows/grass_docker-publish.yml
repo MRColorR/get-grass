@@ -85,7 +85,6 @@ jobs:
       - name: Check for new Grass-Node version
         id: grass-node-version-check
         run: |
-          set -x
           # Attempt to fetch the latest Grass-Node version
           wget -q "${{ env.GRASS_NODE_RELEASE_URL }}" -O grass_node_version.json || echo "none" > grass_node_version.json
 
@@ -140,6 +139,7 @@ jobs:
         if: steps.grass-version-check.outputs.grass_build == 'true'
         uses: docker/build-push-action@v6
         with:
+          file: "grass.dockerfile"
           push: true
           tags: ${{ env.GRASS_IMAGE_NAME }}:${{ env.TAG }}
           platforms: linux/amd64,linux/arm64, linux/arm/v7
@@ -150,6 +150,7 @@ jobs:
         if: steps.grass-node-version-check.outputs.grass_node_build == 'true'
         uses: docker/build-push-action@v6
         with:
+          file: "grass-node.dockerfile"
           push: true
           tags: ${{ env.GRASS_NODE_IMAGE_NAME }}:${{ env.TAG }}
           platforms: linux/amd64,linux/arm64, linux/arm/v7
