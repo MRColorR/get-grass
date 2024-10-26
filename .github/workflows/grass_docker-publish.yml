@@ -142,7 +142,7 @@ jobs:
           file: "grass.dockerfile"
           push: true
           tags: ${{ env.GRASS_IMAGE_NAME }}:${{ env.TAG }}
-          platforms: linux/amd64,linux/arm64, linux/arm/v7
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -153,7 +153,7 @@ jobs:
           file: "grass-node.dockerfile"
           push: true
           tags: ${{ env.GRASS_NODE_IMAGE_NAME }}:${{ env.TAG }}
-          platforms: linux/amd64,linux/arm64, linux/arm/v7
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
