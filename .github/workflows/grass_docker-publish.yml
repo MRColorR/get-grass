@@ -87,15 +87,15 @@ jobs:
         run: |
           set -x
           # Attempt to fetch the latest Grass-Node version
-          wget -q "${{ env.GRASS_NODE_RELEASE_URL }}" -O grass_node_version.json || echo "null" > grass_node_version.json
+          wget -q "${{ env.GRASS_NODE_RELEASE_URL }}" -O grass_node_version.json || echo "none" > grass_node_version.json
 
           # Attempt to parse the JSON file to extract the "version" field
-          LATEST_GRASS_NODE_VERSION=$(jq -r '.result.data.version' grass_node_version.json 2>/dev/null || echo "null")
+          LATEST_GRASS_NODE_VERSION=$(jq -r '.result.data.version' grass_node_version.json 2>/dev/null || echo "none")
 
           # Check if parsing was successful
-          if [ "$LATEST_GRASS_NODE_VERSION" == "null" ]; then
+          if [ "$LATEST_GRASS_NODE_VERSION" == "none" ]; then
               echo "Failed to parse Grass-Node version from JSON. Using Grass version as fallback."
-              LATEST_GRASS_NODE_VERSION="${{env.latest_grass_version}}"
+              LATEST_GRASS_NODE_VERSION="${{ env.latest_grass_version }}"
           fi
 
           echo "Latest Grass-Node Version detected: $LATEST_GRASS_NODE_VERSION"
