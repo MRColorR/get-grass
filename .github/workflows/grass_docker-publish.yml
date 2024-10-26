@@ -43,6 +43,7 @@ jobs:
       - name: Check for new Grass version
         id: grass-version-check
         run: |
+          set -x
           ARCH=$(uname -m)
           if [ "$ARCH" = "x86_64" ]; then
               ARCH="amd64"
