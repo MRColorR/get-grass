@@ -36,7 +36,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
-      
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -82,33 +82,49 @@ jobs:
               echo "grass_build=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check for new Grass-Node version
-        id: grass-node-version-check
-        run: |
-          wget -q "${{ env.GRASS_NODE_RELEASE_URL }}" -O grass_node_version.json
-          
-          # Parse the JSON file to extract the "version" field
-          LATEST_GRASS_NODE_VERSION=$(jq -r '.result.data.version' grass_node_version.json)
-          echo "Latest Grass-Node Version detected: $LATEST_GRASS_NODE_VERSION"
-          
-          if [ -f "${{ env.GRASS_NODE_VERSION_FILE_PATH }}" ]; then
-              echo "Current Grass-Node version file ${{ env.GRASS_NODE_VERSION_FILE_PATH }} found"
-              CURRENT_GRASS_NODE_VERSION=$(cat "${{ env.GRASS_NODE_VERSION_FILE_PATH }}")
-          else
-              echo "Cannot find current Grass-Node version file ${{ env.GRASS_NODE_VERSION_FILE_PATH }}. Creating a new one"
-              mkdir -p "$(dirname "${{ env.GRASS_NODE_VERSION_FILE_PATH }}")"
-              echo 'none' > "${{ env.GRASS_NODE_VERSION_FILE_PATH }}"
-              CURRENT_GRASS_NODE_VERSION='none'
-          fi
-          echo "Current Grass-Node Version: $CURRENT_GRASS_NODE_VERSION"
-          if [ "$CURRENT_GRASS_NODE_VERSION" != "$LATEST_GRASS_NODE_VERSION" ]; then
-              echo "$LATEST_GRASS_NODE_VERSION" > "${{ env.GRASS_NODE_VERSION_FILE_PATH }}"
-              echo "latest_grass_node_version=$LATEST_GRASS_NODE_VERSION" >> "$GITHUB_ENV"
-              echo "grass_node_build=true" >> "$GITHUB_OUTPUT"
-          else
-              echo "No new Grass-Node version detected. Skipping build"
-              echo "grass_node_build=false" >> "$GITHUB_OUTPUT"
-          fi
+          - name: Check for new Grass-Node version
+          id: grass-node-version-check
+          run: |
+            # Attempt to fetch the latest Grass-Node version
+            wget -q "${{ env.GRASS_NODE_RELEASE_URL }}" -O grass_node_version.json
+            
+            # Check if wget was successful
+            if [ $? -eq 0 ]; then
+                # Parse the JSON file to extract the "version" field
+                LATEST_GRASS_NODE_VERSION=$(jq -r '.result.data.version' grass_node_version.json)
+  
+                # Check if parsing was successful
+                if [ "$LATEST_GRASS_NODE_VERSION" == "null" ]; then
+                    echo "Failed to parse Grass-Node version from JSON. Using Grass version as fallback."
+                    LATEST_GRASS_NODE_VERSION="${{ env.latest_grass_version }}"
+                fi
+            else
+                echo "Failed to retrieve Grass-Node version. Using Grass version as fallback."
+                LATEST_GRASS_NODE_VERSION="${{ env.latest_grass_version }}"
+            fi
+  
+            echo "Latest Grass-Node Version detected: $LATEST_GRASS_NODE_VERSION"
+            
+            if [ -f "${{ env.GRASS_NODE_VERSION_FILE_PATH }}" ]; then
+                echo "Current Grass-Node version file ${{ env.GRASS_NODE_VERSION_FILE_PATH }} found"
+                CURRENT_GRASS_NODE_VERSION=$(cat "${{ env.GRASS_NODE_VERSION_FILE_PATH }}")
+            else
+                echo "Cannot find current Grass-Node version file ${{ env.GRASS_NODE_VERSION_FILE_PATH }}. Creating a new one"
+                mkdir -p "$(dirname "${{ env.GRASS_NODE_VERSION_FILE_PATH }}")"
+                echo 'none' > "${{ env.GRASS_NODE_VERSION_FILE_PATH }}"
+                CURRENT_GRASS_NODE_VERSION='none'
+            fi
+            echo "Current Grass-Node Version: $CURRENT_GRASS_NODE_VERSION"
+            
+            if [ "$CURRENT_GRASS_NODE_VERSION" != "$LATEST_GRASS_NODE_VERSION" ]; then
+                echo "$LATEST_GRASS_NODE_VERSION" > "${{ env.GRASS_NODE_VERSION_FILE_PATH }}"
+                echo "latest_grass_node_version=$LATEST_GRASS_NODE_VERSION" >> "$GITHUB_ENV"
+                echo "grass_node_build=true" >> "$GITHUB_OUTPUT"
+            else
+                echo "No new Grass-Node version detected. Skipping build"
+                echo "grass_node_build=false" >> "$GITHUB_OUTPUT"
+            fi
+  
 
       - name: Setup QEMU
         if: steps.grass-version-check.outputs.grass_build == 'true' || steps.grass-node-version-check.outputs.grass_node_build == 'true'
