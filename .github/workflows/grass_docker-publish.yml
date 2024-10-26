@@ -178,10 +178,10 @@ jobs:
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'mrcolorr@users.noreply.github.com'
           if [ "${{ steps.grass-version-check.outputs.grass_build }}" == "true" ]; then
-            git tag -a "${{ env.latest_grass_version }}" -m "Update to Grass version ${{ env.latest_grass_version }}"
-            git push origin "${{ env.latest_grass_version }}"
+            git tag -a "grass_${{ env.latest_grass_version }}" -m "Update to Grass version ${{ env.latest_grass_version }}"
+            git push origin "grass_${{ env.latest_grass_version }}"
           fi
           if [ "${{ steps.grass-node-version-check.outputs.grass_node_build }}" == "true" ]; then
-            git tag -a "${{ env.latest_grass_node_version }}" -m "Update to Grass-Node version ${{ env.latest_grass_node_version }}"
-            git push origin "${{ env.latest_grass_node_version }}"
+            git tag -a "grass-node_${{ env.latest_grass_node_version }}" -m "Update to Grass-Node version ${{ env.latest_grass_node_version }}"
+            git push origin "grass-node_${{ env.latest_grass_node_version }}"
           fi
