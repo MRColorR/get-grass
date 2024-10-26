@@ -128,6 +128,23 @@ def download_from_provider_website(driver, extension_id, crx_download_url, exten
     
     raise FileNotFoundError('CRX file not found in the extracted folder.')
 
+# function to handle cookie banner: If a cookie banner is present press the button containing the accept text
+def handle_cookie_banner(driver):
+    """
+    Handle the cookie banner by clicking the "Accept" button if it's present.
+
+    Args:
+        driver (webdriver): The WebDriver instance.
+    """
+    try:
+        cookie_banner = driver.find_element(By.XPATH, "//button[contains(text(), 'ACCEPT')]")
+        if cookie_banner:
+            logging.info('Cookie banner found. Accepting cookies...')
+            cookie_banner.click()
+            time.sleep(random.randint(3, 11))
+            logging.info('Cookies accepted.')
+    except Exception:
+        pass
 
 def login_to_website(driver, email, password, login_url, max_retry_multiplier):
     """
@@ -158,7 +175,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
                 EC.presence_of_element_located((By.XPATH, "//button[text()='ACCESS MY ACCOUNT']"))
             )
             logging.info('Login page loaded successfully!')
-            
+            handle_cookie_banner(driver)
             logging.info('Entering credentials...')
             username = driver.find_element(By.NAME, "user")
             username.clear()
@@ -177,6 +194,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
                 EC.presence_of_element_located((By.XPATH, "//button[text()='Logout']"))
             )
             logging.info('Login successful!')
+            handle_cookie_banner(driver)
             time.sleep(random.randint(3, 11))
             return True
         except (NoSuchElementException, TimeoutException) as e:

@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  grass:
+    build:
+      context: .
+      dockerfile: grass.dockerfile
+    container_name: grass
+    hostname: my_device
+    image: mrcolorrain/grass
+    environment:
+      - GRASS_USER=${USER_EMAIL}
+      - GRASS_PASS=${USER_PASSWORD}
+    restart: unless-stopped

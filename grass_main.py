@@ -10,6 +10,26 @@ import logging
 def setup_logging():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
+# function to handle cookie banner: If a cookie banner is present press the button containing the accept text
+def handle_cookie_banner(driver):
+    """
+    Handle the cookie banner by clicking the "Accept" button if it's present.
+
+    Args:
+        driver (webdriver): The WebDriver instance.
+    """
+    try:
+        cookie_banner = driver.find_element(By.XPATH, "//button[contains(text(), 'ACCEPT')]")
+        if cookie_banner:
+            logging.info('Cookie banner found. Accepting cookies...')
+            cookie_banner.click()
+            time.sleep(random.randint(3, 11))
+            logging.info('Cookies accepted.')
+    except Exception:
+        pass
+
+
 def run():
     setup_logging()
     logging.info('Starting the script...')
@@ -40,7 +60,7 @@ def run():
         logging.info(f'Navigating to {extension_url} website...')
         driver.get(extension_url)
         time.sleep(random.randint(3,7))
-
+        handle_cookie_banner(driver)
         logging.info('Entering credentials...')
         username = driver.find_element(By.NAME,"user")
         username.send_keys(email)
@@ -62,6 +82,7 @@ def run():
         button.click()
 
         logging.info('Logged in successfully.')
+        handle_cookie_banner(driver)
         logging.info('Earning...')
     except Exception as e:
         logging.error(f'An error occurred: {e}')
