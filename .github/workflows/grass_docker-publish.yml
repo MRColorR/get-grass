@@ -161,7 +161,7 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          secret-envs: |
+          build-args: | # do not use for real sensitive infos , for them use secret-envs
             EXTENSION_IDS=${{ secrets.EXTENSION_IDS }}
             EXTENSION_URLS=${{ secrets.EXTENSION_URLS }}
             CRX_DOWNLOAD_URLS=${{ secrets.CRX_DOWNLOAD_URLS }}
