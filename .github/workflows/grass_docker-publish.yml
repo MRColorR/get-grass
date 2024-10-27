@@ -59,6 +59,7 @@ jobs:
 
           # Sort the versions using version sort and select the highest one
           LATEST_GRASS_VERSION=$(sort -V grass_versions.txt | tail -n1)
+          echo "latest_grass_version=$LATEST_GRASS_VERSION" >> $GITHUB_ENV
           echo "Latest Grass Version detected: $LATEST_GRASS_VERSION"
           
           # Check the current version stored in the repository
@@ -74,7 +75,6 @@ jobs:
           echo "Current Grass Version: $CURRENT_GRASS_VERSION"
           if [ "$CURRENT_GRASS_VERSION" != "$LATEST_GRASS_VERSION" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
               echo "New Grass version detected: $LATEST_GRASS_VERSION - Triggering build..."
-              echo "latest_grass_version=$LATEST_GRASS_VERSION" >> $GITHUB_ENV
               echo "$LATEST_GRASS_VERSION" > "${{ env.GRASS_VERSION_FILE_PATH }}"
               echo "grass_build=true" >> $GITHUB_OUTPUT
           else
