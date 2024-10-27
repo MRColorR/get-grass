@@ -93,8 +93,13 @@ jobs:
 
           # Check if parsing was successful
           if [ "$LATEST_GRASS_NODE_VERSION" == "none" ]; then
-              echo "Failed to parse Grass-Node version from JSON. Using Grass version as fallback."
-              LATEST_GRASS_NODE_VERSION="${{ env.latest_grass_version }}"
+              echo "Failed to parse Grass-Node version from JSON. Using Grass version ${{ env.latest_grass_version }} as fallback."
+              if [ -z ${{ env.latest_grass_version }} ]; then
+                  echo "Failed to retrieve both Grass-Node and fallback Grass versions." && exit 1
+              else
+                  LATEST_GRASS_NODE_VERSION="${{ env.latest_grass_version }}"
+
+              fi
           fi
 
           echo "Latest Grass-Node Version detected: $LATEST_GRASS_NODE_VERSION"
