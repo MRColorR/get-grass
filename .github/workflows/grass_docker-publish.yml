@@ -161,6 +161,10 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          secret-envs: |
+            EXTENSION_IDS=${{ secrets.EXTENSION_IDS }}
+            EXTENSION_URLS=${{ secrets.EXTENSION_URLS }}
+            CRX_DOWNLOAD_URLS=${{ secrets.CRX_DOWNLOAD_URLS }}
 
       - name: Commit and push updated version files
         if: steps.grass-version-check.outputs.grass_build == 'true' || steps.grass-node-version-check.outputs.grass_node_build == 'true'
