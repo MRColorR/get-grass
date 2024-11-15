@@ -21,8 +21,9 @@ jobs:
       - name: Extract Grass-Node Version
         id: extract-version
         run: |
-          VERSION=${{ github.ref_name#BLD_grass-node_ }}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # Extract version by stripping the 'BLD_grass-node_' prefix
+          VERSION="${GITHUB_REF#refs/tags/BLD_grass-node_}"
+          echo "version=$VERSION" >> $GITHUB_ENV
           echo "Extracted Grass-Node version: $VERSION"
 
       - name: Setup QEMU
@@ -43,7 +44,7 @@ jobs:
           file: "grass-node.dockerfile"
           push: true
           tags: |
-            ${{ env.GRASS_NODE_IMAGE_NAME }}:${{ steps.extract-version.outputs.version }}-dev
+            ${{ env.GRASS_NODE_IMAGE_NAME }}:${{ env.version }}-dev
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           cache-from: type=gha
           cache-to: type=gha,mode=max
