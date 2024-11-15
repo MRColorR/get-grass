@@ -233,11 +233,14 @@ def initialize_driver(crx_file_paths=None):
         Exception: If there is an error during WebDriver initialization.
     """
     driver_options = Options()
-    driver_options.add_argument('--no-sandbox')
-    driver_options.add_argument('--disable-dev-shm-usage')
-    driver_options.add_experimental_option('prefs', {'extensions.ui.developer_mode': True})
+    driver_options.add_argument('--no-sandbox')  # Disables the sandbox security feature for compatibility in containerized environments
+    driver_options.add_argument('--disable-dev-shm-usage')  # Prevents Chrome from using /dev/shm to avoid limited shared memory issues in Docker
+    driver_options.add_argument('start-maximized')  # Starts the browser maximized to ensure all elements are visible and interactable
+    driver_options.add_experimental_option('prefs', {'extensions.ui.developer_mode': True})  # Enables developer mode for extensions
 
-    if os.getenv('HEADLESS', 'false').lower() == 'true':
+    # Check for headless mode
+    headless_mode = os.getenv('HEADLESS', 'false').lower() == 'true'
+    if headless_mode:
         driver_options.add_argument('--headless')
 
     driver_options.add_argument(
@@ -405,6 +408,8 @@ def main():
         logging.error('No username or password provided. Please set the USER_EMAIL and USER_PASSWORD environment variables.')
         return
 
+    driver = None  # Initialize driver to None
+
     max_retries = max_retry_multiplier
     for attempt in range(max_retries):
         try:
@@ -422,6 +427,7 @@ def main():
             
             logging.info('Closing the browser and re-initializing it with the extensions installed...')
             safe_quit(driver)
+            driver = None  # Reset driver to None after quitting
             
             # Re-initialize the browser with the new extensions
             driver = initialize_driver(crx_file_paths)
@@ -442,18 +448,22 @@ def main():
                         refresh_and_check(driver, extension_id, extension_window_handles[extension_id])
                 except Exception as e:
                     logging.error(f'An error occurred during the refresh cycle: {e}')
-                    safe_quit(driver)
-                    break
-            continue  # try to re-initialize everything until max attempts
+                    # safequit driver moved to finally block
+                    break  # Exit the while loop to re-initialize
+            continue  # Try to re-initialize everything until max attempts
         except Exception as e:
             logging.error(f'An error occurred: {e}')
-            safe_quit(driver)
+            # safequit driver moved to finally block
             if attempt < max_retries - 1:
                 logging.info(f'Backing off... attempt {attempt + 1}/{max_retries}')
                 time.sleep(random.randint(11, 31) * (attempt + 1))
                 continue
             else:
                 raise
+        finally:
+            if driver is not None:
+                safe_quit(driver)
+                driver = None  # Reset driver to None after quitting
 
 
 if __name__ == "__main__":
