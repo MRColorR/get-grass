@@ -1,34 +1,29 @@
-name: Grass Dev Build and Push
+name: Grass-Node Dev Build and Push
 
 on:
   push:
     tags:
-      - 'BDL_grass-dev*'
+      - 'BLD_grass-node_*'
 
 permissions:
   contents: write
 
 env:
-  GRASS_IMAGE_NAME: 'mrcolorrain/grass'
-  GRASS_VERSION_FILE_PATH: '.githubworkflows.grass_current_version'
+  GRASS_NODE_IMAGE_NAME: 'mrcolorrain/grass-node'
 
 jobs:
-  build-and-push:
+  dev-build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Read Grass Version
-        id: read-version
+      - name: Extract Grass-Node Version
+        id: extract-version
         run: |
-          if [ -f "${{ env.GRASS_VERSION_FILE_PATH }}" ]; then
-            VERSION=$(cat "${{ env.GRASS_VERSION_FILE_PATH }}")
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-          else
-            echo "Version file not found. Exiting."
-            exit 1
-          fi
+          VERSION=${{ github.ref_name#BLD_grass-node_ }}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted Grass-Node version: $VERSION"
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
@@ -42,13 +37,13 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and Push Grass Dev Image
+      - name: Build and Push Grass-Node Dev Image
         uses: docker/build-push-action@v6
         with:
-          file: "grass.dockerfile"
+          file: "grass-node.dockerfile"
           push: true
           tags: |
-            ${{ env.GRASS_IMAGE_NAME }}:${{ steps.read-version.outputs.version }}-dev
+            ${{ env.GRASS_NODE_IMAGE_NAME }}:${{ steps.extract-version.outputs.version }}-dev
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           cache-from: type=gha
           cache-to: type=gha,mode=max
