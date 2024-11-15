@@ -44,7 +44,7 @@ jobs:
           file: "grass-node.dockerfile"
           push: true
           tags: |
-            ${{ env.GRASS_NODE_IMAGE_NAME }}:${{ env.version }}-dev
+            ${{ env.GRASS_NODE_IMAGE_NAME }}:${{ env.version }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           cache-from: type=gha
           cache-to: type=gha,mode=max
