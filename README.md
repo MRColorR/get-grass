@@ -5,13 +5,14 @@
 🌟 **If you find this project helpful, please consider leaving a star. Your support is appreciated!🙂** 
 
 ## Introduction 📖
-This repository hosts the Dockerfile and necessary configurations for the unofficial [GetGrass](https://app.getgrass.io/register/?referralCode=qyvJmxgNUhcLo2f) Docker image. It's designed to facilitate the deployment of Grass (GetGrass) in Docker environments, supporting both x86_64 and arm64 architectures.
+This repository hosts the Dockerfiles and necessary configurations for the unofficial [GetGrass](https://app.getgrass.io/register/?referralCode=qyvJmxgNUhcLo2f) Docker images for grass lite, grass node and grass desktop flavors. It's designed to facilitate the deployment of Grass (GetGrass) in Docker environments, supporting both x86_64 and arm64 architectures.
 
 ## Features ✨
 - **Debian slim Base Image**: Utilizes the latest version of Debian slim for a small footprint.
 - **Multi-Architecture Support**: Supports both x86_64 and arm64 architectures.
 - **Minimal Configuration**: Easy to set up with minimal configuration required.
 - **Auto-Update**: Always updated to be in line with the latest Grass version.
+- **VNC Enabled**: Includes a VNC-based graphical interface to check and optionally interact with Grass.
 
 ## Prerequisites 📋
 Ensure Docker is installed on your system. For installation instructions, please refer to the [official Docker documentation](https://docs.docker.com/get-docker/).
@@ -50,6 +51,29 @@ This section provides instructions on how to use the grass-node extension if you
       container_name: grass-node
       hostname: my_device
       image: mrcolorrain/grass-node
+      environment:
+        USER_EMAIL: your_email
+        USER_PASSWORD: your_password
+      ports:
+        - "5900:5900"
+        - "6080:6080"
+  ```
+
+## Grass-Desktop 🖥️
+we have also a Grass Desktop image available. This section provides instructions on how to use the grass-desktop GUI application fully automated inside a container.  Just in case you want to use this instead of the standard grass-node or grass extension available in the other images. 
+_Note: This GUI version is heavier than the other images due to the additional components required to run a full desktop environment._
+- ### Docker cli 🐳
+  ```bash
+  docker run -d --name grass-desktop -h my_device -e USER_EMAIL=your_email -e USER_PASSWORD=your_password -p 5900:5900 -p 6080:6080 mrcolorrain/grass-desktop
+  ```
+- ### Docker compose 🐳
+  ```yaml
+  version: "3.9"
+  services:
+    grass-node:
+      container_name: grass-desktop
+      hostname: my_device
+      image: mrcolorrain/grass-desktop
       environment:
         USER_EMAIL: your_email
         USER_PASSWORD: your_password

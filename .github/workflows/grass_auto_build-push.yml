@@ -18,12 +18,15 @@ permissions: # The permissions that the workflow has. The permissions are inheri
 env: 
   GRASS_IMAGE_NAME: 'mrcolorrain/grass'
   GRASS_NODE_IMAGE_NAME: 'mrcolorrain/grass-node'
+  GRASS_DESKTOP_IMAGE_NAME: 'mrcolorrain/grass-desktop'
   TAG: 'latest'
   MAX_DELAY: 30
   GRASS_VERSION_FILE_PATH: '.githubworkflows.grass_current_version'
   GRASS_NODE_VERSION_FILE_PATH: '.githubworkflows.grass-node_current_version'
+  GRASS_DESKTOP_VERSION_FILE_PATH: '.githubworkflows.grass-desktop_current_version'
   GRASS_RELEASE_URL: 'https://chromewebstore.google.com/detail/${{ secrets.EXTENSION_ID }}'
   GRASS_NODE_RELEASE_URL: 'https://api.getgrass.io/extensionLatestRelease'
+  GRASS_DESKTOP_RELEASE_URL: 'https://api.getgrass.io/desktopLatestRelease' # Placeholder URL
 
 jobs: 
   build-and-push: 
@@ -39,6 +42,15 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Determine if Forced Build
+        id: force-check
+        run: |
+          FORCE_BUILD="false"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            FORCE_BUILD="true"
+          fi
+          echo "force_build=$FORCE_BUILD" >> $GITHUB_ENV
 
       - name: Check for new Grass version
         id: grass-version-check
@@ -73,13 +85,19 @@ jobs:
             CURRENT_GRASS_VERSION='none'
           fi
           echo "Current Grass Version: $CURRENT_GRASS_VERSION"
-          if [ "$CURRENT_GRASS_VERSION" != "$LATEST_GRASS_VERSION" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+
+          if [ "$CURRENT_GRASS_VERSION" != "$LATEST_GRASS_VERSION" ]; then
               echo "New Grass version detected: $LATEST_GRASS_VERSION - Triggering build..."
               echo "$LATEST_GRASS_VERSION" > "${{ env.GRASS_VERSION_FILE_PATH }}"
               echo "grass_build=true" >> $GITHUB_OUTPUT
           else
-              echo "No new Grass version detected. Skipping build"
-              echo "grass_build=false" >> $GITHUB_OUTPUT
+              if [ "${{ env.force_build }}" = "true" ]; then
+                echo "Forcing Grass build due to manual trigger."
+                echo "grass_build=true" >> $GITHUB_OUTPUT
+              else
+                echo "No new Grass version detected. Skipping build"
+                echo "grass_build=false" >> $GITHUB_OUTPUT
+              fi
           fi
 
       - name: Check for new Grass-Node version
@@ -87,7 +105,7 @@ jobs:
         run: |
           # Attempt to fetch the latest Grass-Node version
           wget -q "${{ env.GRASS_NODE_RELEASE_URL }}" -O grass_node_version.json || echo "none" > grass_node_version.json
-
+          
           # Attempt to parse the JSON file to extract the "version" field
           LATEST_GRASS_NODE_VERSION=$(jq -r '.result.data.version' grass_node_version.json 2>/dev/null || echo "none")
 
@@ -114,27 +132,83 @@ jobs:
               CURRENT_GRASS_NODE_VERSION='none'
           fi
           echo "Current Grass-Node Version: $CURRENT_GRASS_NODE_VERSION"
-          
+
+          # If no new version, but FORCE_BUILD is true, build anyway
           if [ "$CURRENT_GRASS_NODE_VERSION" != "$LATEST_GRASS_NODE_VERSION" ]; then
               echo "$LATEST_GRASS_NODE_VERSION" > "${{ env.GRASS_NODE_VERSION_FILE_PATH }}"
               echo "latest_grass_node_version=$LATEST_GRASS_NODE_VERSION" >> $GITHUB_ENV
               echo "grass_node_build=true" >> $GITHUB_OUTPUT
           else
-              echo "No new Grass-Node version detected. Skipping build"
-              echo "grass_node_build=false" >> $GITHUB_OUTPUT
+              if [ "${{ env.force_build }}" = "true" ]; then
+                # Force build Grass-Node as well
+                echo "Forcing Grass-Node build due to manual trigger."
+                echo "grass_node_build=true" >> $GITHUB_OUTPUT
+              else
+                echo "No new Grass-Node version detected. Skipping build"
+                echo "grass_node_build=false" >> $GITHUB_OUTPUT
+              fi
           fi
+
+          - name: Check for new Grass-Desktop version
+          id: grass-desktop-version-check
+          run: |
+            # Attempt to fetch the latest Grass-Desktop version
+            wget -q "${{ env.GRASS_DESKTOP_RELEASE_URL }}" -O grass_desktop_version.json || echo "none" > grass_desktop_version.json
+            
+            # Attempt to parse the JSON file to extract the "version" field for the desktop app
+            LATEST_GRASS_DESKTOP_VERSION=$(jq -r '.result.data.version' grass_desktop_version.json 2>/dev/null || echo "none")
+        
+            # Check if parsing was successful
+            if [ "$LATEST_GRASS_DESKTOP_VERSION" == "none" ]; then
+                echo "Failed to parse Grass-Desktop version from JSON. Using Grass version ${{ env.latest_grass_version }} as fallback."
+                if [ -z ${{ env.latest_grass_version }} ]; then
+                    echo "Failed to retrieve both Grass-Desktop and fallback Grass versions." && exit 1
+                else
+                    LATEST_GRASS_DESKTOP_VERSION="${{ env.latest_grass_version }}"
+                fi
+            fi
+        
+            echo "Latest Grass-Desktop Version detected: $LATEST_GRASS_DESKTOP_VERSION"
+        
+            if [ -f "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}" ]; then
+                echo "Current Grass-Desktop version file ${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }} found"
+                CURRENT_GRASS_DESKTOP_VERSION=$(cat "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}")
+            else
+                echo "Cannot find current Grass-Desktop version file ${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}. Creating a new one"
+                mkdir -p "$(dirname "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}")"
+                echo 'none' > "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}"
+                CURRENT_GRASS_DESKTOP_VERSION='none'
+            fi
+            echo "Current Grass-Desktop Version: $CURRENT_GRASS_DESKTOP_VERSION"
+        
+            # Handle logic for Grass-Desktop build
+            if [ "$CURRENT_GRASS_DESKTOP_VERSION" != "$LATEST_GRASS_DESKTOP_VERSION" ]; then
+                echo "$LATEST_GRASS_DESKTOP_VERSION" > "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}"
+                echo "latest_grass_desktop_version=$LATEST_GRASS_DESKTOP_VERSION" >> $GITHUB_ENV
+                echo "grass_desktop_build=true" >> $GITHUB_OUTPUT
+            else
+                if [ "${{ env.force_build }}" = "true" ]; then
+                  # Force build Grass-Desktop as well
+                  echo "Forcing Grass-Desktop build due to manual trigger."
+                  echo "grass_desktop_build=true" >> $GITHUB_OUTPUT
+                else
+                  echo "No new Grass-Desktop version detected. Skipping build"
+                  echo "grass_desktop_build=false" >> $GITHUB_OUTPUT
+                fi
+            fi
+        
 
 
       - name: Setup QEMU
-        if: steps.grass-version-check.outputs.grass_build == 'true' || steps.grass-node-version-check.outputs.grass_node_build == 'true'
+        if: steps.grass-version-check.outputs.grass_build == 'true' || steps.grass-node-version-check.outputs.grass_node_build == 'true' || steps.grass-desktop-version-check.outputs.grass_desktop_build == 'true'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        if: steps.grass-version-check.outputs.grass_build == 'true' || steps.grass-node-version-check.outputs.grass_node_build == 'true'
+        if: steps.grass-version-check.outputs.grass_build == 'true' || steps.grass-node-version-check.outputs.grass_node_build == 'true' || steps.grass-desktop-version-check.outputs.grass_desktop_build == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Login to DockerHub
-        if: steps.grass-version-check.outputs.grass_build == 'true' || steps.grass-node-version-check.outputs.grass_node_build == 'true'
+        if: steps.grass-version-check.outputs.grass_build == 'true' || steps.grass-node-version-check.outputs.grass_node_build == 'true' || steps.grass-desktop-version-check.outputs.grass_desktop_build == 'true'
         uses: docker/login-action@v3
         with: 
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -166,31 +240,72 @@ jobs:
             EXTENSION_URLS=${{ secrets.EXTENSION_URLS }}
             CRX_DOWNLOAD_URLS=${{ secrets.CRX_DOWNLOAD_URLS }}
 
+      - name: Build and Push Grass-Desktop Image
+        # Grass Desktop builds if grass_desktop_build == true (forced or version changed)
+        if: steps.grass-desktop-version-check.outputs.grass_desktop_build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          file: "grass-desktop.dockerfile"
+          push: true
+          tags: ${{ env.GRASS_DESKTOP_IMAGE_NAME }}:${{ env.TAG }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Only commit version files if a new version was detected (not forced)
+      # force_build == 'true' means we built but did not necessarily detect new versions.
+      # We do the same logic for Grass, Grass-Node, and Grass-Desktop independently.
       - name: Commit and push updated version files
-        if: steps.grass-version-check.outputs.grass_build == 'true' || steps.grass-node-version-check.outputs.grass_node_build == 'true'
+        if: ((steps.grass-version-check.outputs.grass_build == 'true' && env.force_build != 'true') || 
+             (steps.grass-node-version-check.outputs.grass_node_build == 'true' && env.force_build != 'true') ||
+             (steps.grass-desktop-version-check.outputs.grass_desktop_build == 'true' && env.force_build != 'true'))
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'mrcolorr@users.noreply.github.com'
-          if [ "${{ steps.grass-version-check.outputs.grass_build }}" == "true" ]; then
+
+          # If Grass version changed (not forced)
+          if [ "${{ steps.grass-version-check.outputs.grass_build }}" == "true" ] && [ "${{ env.force_build }}" != "true" ]; then
             git add "${{ env.GRASS_VERSION_FILE_PATH }}"
             git commit -m "Update Grass version to ${{ env.latest_grass_version }}"
           fi
-          if [ "${{ steps.grass-node-version-check.outputs.grass_node_build }}" == "true" ]; then
+
+          # If Grass-Node version changed (not forced)
+          if [ "${{ steps.grass-node-version-check.outputs.grass_node_build }}" == "true" ] && [ "${{ env.force_build }}" != "true" ]; then
             git add "${{ env.GRASS_NODE_VERSION_FILE_PATH }}"
             git commit -m "Update Grass-Node version to ${{ env.latest_grass_node_version }}"
           fi
+
+          # If Grass-Desktop version changed (not forced)
+          if [ "${{ steps.grass-desktop-version-check.outputs.grass_desktop_build }}" == "true" ] && [ "${{ env.force_build }}" != "true" ] && [ "${{ env.latest_grass_desktop_version }}" != "none" ]; then
+            git add "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}"
+            git commit -m "Update Grass-Desktop version to ${{ env.latest_grass_desktop_version }}"
+          fi
+
           git push
 
+      # Only create tags if a new version was actually detected (not forced)
       - name: Create and push tags for new versions
-        if: steps.grass-version-check.outputs.grass_build == 'true' || steps.grass-node-version-check.outputs.grass_node_build == 'true'
+        if: ((steps.grass-version-check.outputs.grass_build == 'true' && env.force_build != 'true') || 
+             (steps.grass-node-version-check.outputs.grass_node_build == 'true' && env.force_build != 'true') ||
+             (steps.grass-desktop-version-check.outputs.grass_desktop_build == 'true' && env.force_build != 'true'))
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'mrcolorr@users.noreply.github.com'
-          if [ "${{ steps.grass-version-check.outputs.grass_build }}" == "true" ]; then
+
+          # Tag for Grass if Grass version changed and not forced
+          if [ "${{ steps.grass-version-check.outputs.grass_build }}" == "true" ] && [ "${{ env.force_build }}" != "true" ]; then
             git tag -a "grass_${{ env.latest_grass_version }}" -m "Update to Grass version ${{ env.latest_grass_version }}"
             git push origin "grass_${{ env.latest_grass_version }}"
           fi
-          if [ "${{ steps.grass-node-version-check.outputs.grass_node_build }}" == "true" ]; then
+
+          # Tag for Grass-Node if changed and not forced
+          if [ "${{ steps.grass-node-version-check.outputs.grass_node_build }}" == "true" ] && [ "${{ env.force_build }}" != "true" ]; then
             git tag -a "grass-node_${{ env.latest_grass_node_version }}" -m "Update to Grass-Node version ${{ env.latest_grass_node_version }}"
             git push origin "grass-node_${{ env.latest_grass_node_version }}"
+          fi
+
+          # Tag for Grass-Desktop if changed and not forced
+          if [ "${{ steps.grass-desktop-version-check.outputs.grass_desktop_build }}" == "true" ] && [ "${{ env.force_build }}" != "true" ] && [ "${{ env.latest_grass_desktop_version }}" != "none" ]; then
+            git tag -a "grass-desktop_${{ env.latest_grass_desktop_version }}" -m "Update to Grass-Desktop version ${{ env.latest_grass_desktop_version }}"
+            git push origin "grass-desktop_${{ env.latest_grass_desktop_version }}"
           fi
