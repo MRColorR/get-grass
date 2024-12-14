@@ -70,7 +70,7 @@ _Note: This GUI version is heavier than the other images due to the additional c
   ```yaml
   version: "3.9"
   services:
-    grass-node:
+    grass-desktop:
       container_name: grass-desktop
       hostname: my_device
       image: mrcolorrain/grass-desktop
