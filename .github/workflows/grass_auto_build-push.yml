@@ -149,54 +149,53 @@ jobs:
               fi
           fi
 
-          - name: Check for new Grass-Desktop version
-          id: grass-desktop-version-check
-          run: |
-            # Attempt to fetch the latest Grass-Desktop version
-            wget -q "${{ env.GRASS_DESKTOP_RELEASE_URL }}" -O grass_desktop_version.json || echo "none" > grass_desktop_version.json
-            
-            # Attempt to parse the JSON file to extract the "version" field for the desktop app
-            LATEST_GRASS_DESKTOP_VERSION=$(jq -r '.result.data.version' grass_desktop_version.json 2>/dev/null || echo "none")
+      - name: Check for new Grass-Desktop version
+        id: grass-desktop-version-check
+        run: |
+          # Attempt to fetch the latest Grass-Desktop version
+          wget -q "${{ env.GRASS_DESKTOP_RELEASE_URL }}" -O grass_desktop_version.json || echo "none" > grass_desktop_version.json
+          
+          # Attempt to parse the JSON file to extract the "version" field
+          LATEST_GRASS_DESKTOP_VERSION=$(jq -r '.result.data.version' grass_desktop_version.json 2>/dev/null || echo "none")
         
-            # Check if parsing was successful
-            if [ "$LATEST_GRASS_DESKTOP_VERSION" == "none" ]; then
-                echo "Failed to parse Grass-Desktop version from JSON. Using Grass version ${{ env.latest_grass_version }} as fallback."
-                if [ -z ${{ env.latest_grass_version }} ]; then
-                    echo "Failed to retrieve both Grass-Desktop and fallback Grass versions." && exit 1
-                else
-                    LATEST_GRASS_DESKTOP_VERSION="${{ env.latest_grass_version }}"
-                fi
-            fi
+          # Check if parsing was successful
+          if [ "$LATEST_GRASS_DESKTOP_VERSION" == "none" ]; then
+              echo "Failed to parse Grass-Desktop version from JSON. Using Grass version ${{ env.latest_grass_version }} as fallback."
+              if [ -z ${{ env.latest_grass_version }} ]; then
+                  echo "Failed to retrieve both Grass-Desktop and fallback Grass versions." && exit 1
+              else
+                  LATEST_GRASS_DESKTOP_VERSION="${{ env.latest_grass_version }}"
+              fi
+          fi
         
-            echo "Latest Grass-Desktop Version detected: $LATEST_GRASS_DESKTOP_VERSION"
+          echo "Latest Grass-Desktop Version detected: $LATEST_GRASS_DESKTOP_VERSION"
         
-            if [ -f "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}" ]; then
-                echo "Current Grass-Desktop version file ${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }} found"
-                CURRENT_GRASS_DESKTOP_VERSION=$(cat "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}")
-            else
-                echo "Cannot find current Grass-Desktop version file ${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}. Creating a new one"
-                mkdir -p "$(dirname "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}")"
-                echo 'none' > "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}"
-                CURRENT_GRASS_DESKTOP_VERSION='none'
-            fi
-            echo "Current Grass-Desktop Version: $CURRENT_GRASS_DESKTOP_VERSION"
+          if [ -f "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}" ]; then
+              echo "Current Grass-Desktop version file ${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }} found"
+              CURRENT_GRASS_DESKTOP_VERSION=$(cat "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}")
+          else
+              echo "Cannot find current Grass-Desktop version file ${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}. Creating a new one"
+              mkdir -p "$(dirname "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}")"
+              echo 'none' > "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}"
+              CURRENT_GRASS_DESKTOP_VERSION='none'
+          fi
+          echo "Current Grass-Desktop Version: $CURRENT_GRASS_DESKTOP_VERSION"
         
-            # Handle logic for Grass-Desktop build
-            if [ "$CURRENT_GRASS_DESKTOP_VERSION" != "$LATEST_GRASS_DESKTOP_VERSION" ]; then
-                echo "$LATEST_GRASS_DESKTOP_VERSION" > "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}"
-                echo "latest_grass_desktop_version=$LATEST_GRASS_DESKTOP_VERSION" >> $GITHUB_ENV
-                echo "grass_desktop_build=true" >> $GITHUB_OUTPUT
-            else
-                if [ "${{ env.force_build }}" = "true" ]; then
+          # Handle logic for Grass-Desktop build
+          if [ "$CURRENT_GRASS_DESKTOP_VERSION" != "$LATEST_GRASS_DESKTOP_VERSION" ]; then
+              echo "$LATEST_GRASS_DESKTOP_VERSION" > "${{ env.GRASS_DESKTOP_VERSION_FILE_PATH }}"
+              echo "latest_grass_desktop_version=$LATEST_GRASS_DESKTOP_VERSION" >> $GITHUB_ENV
+              echo "grass_desktop_build=true" >> $GITHUB_OUTPUT
+          else
+              if [ "${{ env.force_build }}" = "true" ]; then
                   # Force build Grass-Desktop as well
                   echo "Forcing Grass-Desktop build due to manual trigger."
                   echo "grass_desktop_build=true" >> $GITHUB_OUTPUT
-                else
+              else
                   echo "No new Grass-Desktop version detected. Skipping build"
                   echo "grass_desktop_build=false" >> $GITHUB_OUTPUT
-                fi
-            fi
-        
+              fi
+          fi
 
 
       - name: Setup QEMU
