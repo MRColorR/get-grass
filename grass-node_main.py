@@ -393,10 +393,10 @@ def main():
     Main function to run the script.
     """
     setup_logging()
-    logging.info('Starting the script...')
+    logging.info('Launching Grass node application...')
     
     # Read variables from the OS environment making compatible with both USER_EMAIL and also as fallback GRASS_EMAIL (from lite img)
-    email = os.getenv('USER_EMAIL') or os.getenv('GRASS_EMAIL') or os.getenv('GRASS_USER')
+    email = os.getenv('USER_EMAIL') or os.getenv('GRASS_EMAIL') or os.getenv('GRASS_USER') or os.getenv('GRASS_USERNAME')
     password = os.getenv('USER_PASSWORD') or os.getenv('GRASS_PASSWORD') or os.getenv('GRASS_PASS')
     extension_ids = os.getenv('EXTENSION_IDS').split(',')
     extension_urls = os.getenv('EXTENSION_URLS').split(',')
@@ -455,8 +455,10 @@ def main():
             logging.error(f'An error occurred: {e}')
             # safequit driver moved to finally block
             if attempt < max_retries - 1:
-                logging.info(f'Backing off... attempt {attempt + 1}/{max_retries}')
-                time.sleep(random.randint(11, 31) * (attempt + 1))
+                # Backoff timing: random wait multiplied by attempt and multiplier
+                backoff_time = random.randint(11, 31) * (attempt+1) * max_retry_multiplier
+                logging.info(f'Backing off for {backoff_time} seconds before attempt {attempt + 1}/{max_retries}...')
+                time.sleep(backoff_time)
                 continue
             else:
                 raise
