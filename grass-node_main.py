@@ -395,9 +395,9 @@ def main():
     setup_logging()
     logging.info('Starting the script...')
     
-    # Read variables from the OS environment
-    email = os.getenv('USER_EMAIL')
-    password = os.getenv('USER_PASSWORD')
+    # Read variables from the OS environment making compatible with both USER_EMAIL and also as fallback GRASS_EMAIL (from lite img)
+    email = os.getenv('USER_EMAIL') or os.getenv('GRASS_EMAIL') or os.getenv('GRASS_USER')
+    password = os.getenv('USER_PASSWORD') or os.getenv('GRASS_PASSWORD') or os.getenv('GRASS_PASS')
     extension_ids = os.getenv('EXTENSION_IDS').split(',')
     extension_urls = os.getenv('EXTENSION_URLS').split(',')
     crx_download_urls = os.getenv('CRX_DOWNLOAD_URLS').split(',')
