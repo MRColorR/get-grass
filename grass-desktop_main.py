@@ -112,38 +112,50 @@ def main():
         MAX_ATTEMPTS = MAX_RETRY_MULTIPLIER
         windows = search_windows_by_name("Grass", MAX_ATTEMPTS, MAX_RETRY_MULTIPLIER)
 
+        delay = MAX_RETRY_MULTIPLIER * 5
+        logging.info(f"Waiting {delay} seconds for Grass interface to load...")
+
         # Focus the last found Grass window
         last_window = windows[-1]
         logging.info("Focusing the Grass main window...")
-        subprocess.run(["xdotool", "windowfocus", "--sync",  last_window], check=True)
-        time.sleep(MAX_RETRY_MULTIPLIER)
+        subprocess.run(["xdotool", "windowfocus", "--sync", last_window], check=True)
+        time.sleep(MAX_RETRY_MULTIPLIER *2 )  # Wait increased x2 to help slow devices
 
         logging.info("Performing Grass login steps...")
         # Press Tab x4, then Enter
         for _ in range(4):
             subprocess.run(["xdotool", "key", "Tab"], check=True)
         subprocess.run(["xdotool", "key", "Return"], check=True)
-        time.sleep(MAX_RETRY_MULTIPLIER)
+        time.sleep(MAX_RETRY_MULTIPLIER *2)  # Wait increased x2 to help slow devices
 
-        # Type the username and press Tab
-        delay = random.randint(100, 500)
+        logging.info("Entering credentials...")
+        # Type the username and press Tab (with a x ms delay between keystrokes)
         if email_username:
-            subprocess.run(["xdotool", "type", email_username], check=True)
+            subprocess.run(["xdotool", "type", "--delay", "125", email_username], check=True)
+        time.sleep(MAX_RETRY_MULTIPLIER)
         subprocess.run(["xdotool", "key", "Tab"], check=True)
 
-        # Type the password and press Return
-        delay = random.randint(100, 500)
+        time.sleep(MAX_RETRY_MULTIPLIER)  # Wait added to help slow devices
+
+        # Type the password and press Return (with a x ms delay between keystrokes)
         if password:
-            subprocess.run(["xdotool", "type", password], check=True)
-        # Enter credetials and log in
+            subprocess.run(["xdotool", "type", "--delay", "125", password], check=True)
+        time.sleep(MAX_RETRY_MULTIPLIER)  # Wait added to help slow devices
+
+        logging.info("Sending credentials...")
+        # Enter credentials and log in
         subprocess.run(["xdotool", "key", "Return"], check=True)
+
+        logging.info("Credentials sent. Waiting for login to complete...")
         time.sleep(MAX_RETRY_MULTIPLIER*5)
 
         # Enable auto updates 
         for _ in range(2):
             subprocess.run(["xdotool", "key", "Tab"], check=True)
             subprocess.run(["xdotool", "key", "space"], check=True)
-        
+
+        time.sleep(MAX_RETRY_MULTIPLIER)  # Wait added to help slow devices
+
         # Press Escape to leave submenu
         subprocess.run(["xdotool", "key", "Escape"], check=True)
 
