@@ -28,6 +28,7 @@
     FROM mrcolorrain/vnc-browser:debian
 
     # Set environment variables
+    ENV PYTHONUNBUFFERED=1
     # In case of error multiply all backoff-timings of this value
     ENV MAX_RETRY_MULTIPLIER=3
 
