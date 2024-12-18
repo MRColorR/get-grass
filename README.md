@@ -58,6 +58,7 @@ This section provides instructions on how to use the grass-node extension if you
         - "5900:5900"
         - "6080:6080"
   ```
+   _Default vnc password is the defauolt password of [vnc-browser](https://github.com/MRColorR/vnc-browser) image. (Currently it should be: `money4band`)_
 
 ## Grass-Desktop 🖥️
 we have also a Grass Desktop image available. This section provides instructions on how to use the grass-desktop GUI application fully automated inside a container.  Just in case you want to use this instead of the standard grass-node or grass extension available in the other images. 
@@ -81,6 +82,7 @@ _Note: This GUI version is heavier than the other images due to the additional c
         - "5900:5900"
         - "6080:6080"
   ```
+  _Default vnc password is the defauolt password of [vnc-browser](https://github.com/MRColorR/vnc-browser) image. (Currently it should be: `money4band`)_
 
 
 ## Contributing 🤲
