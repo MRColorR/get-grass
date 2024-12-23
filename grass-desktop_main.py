@@ -140,7 +140,10 @@ def main():
 
         # Type the password and press Return (with a x ms delay between keystrokes)
         if password:
-            subprocess.run(["xdotool", "type", "--delay", "125", re.sub("^-", "\-", password)], check=True)
+            # Escape all special characters in the password, but avoid double escaping 
+            escaped_password = re.sub(r'(?<!\\)([\\^$*+?.()|[\]{}-])', r'\\\1'
+            subprocess.run(["xdotool", "type", "--delay", "125", escaped_password], check=True)
+            # subprocess.run(["xdotool", "type", "--delay", "125", re.sub("^-", "\-", password)], check=True)
         time.sleep(MAX_RETRY_MULTIPLIER)  # Wait added to help slow devices
 
         logging.info("Sending credentials...")
