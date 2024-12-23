@@ -5,6 +5,7 @@ import time
 import random
 import logging
 import subprocess
+import re
 
 
 def setup_logging():
@@ -139,7 +140,7 @@ def main():
 
         # Type the password and press Return (with a x ms delay between keystrokes)
         if password:
-            subprocess.run(["xdotool", "type", "--delay", "125", password], check=True)
+            subprocess.run(["xdotool", "type", "--delay", "125", re.sub("^-", "\-", password)], check=True)
         time.sleep(MAX_RETRY_MULTIPLIER)  # Wait added to help slow devices
 
         logging.info("Sending credentials...")
