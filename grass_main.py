@@ -35,13 +35,15 @@ def run():
     logging.info('Starting the script...')
 
     # Read variables from the OS env
-    email = os.getenv('GRASS_USER')
-    password = os.getenv('GRASS_PASS')
+    email_username = (os.getenv('USER_EMAIL') or os.getenv('GRASS_EMAIL')
+                      or os.getenv('GRASS_USER') or os.getenv('GRASS_USERNAME'))
+    password = (os.getenv('USER_PASSWORD') or os.getenv('GRASS_PASSWORD') 
+                or os.getenv('GRASS_PASS'))
     extension_id = os.getenv('EXTENSION_ID')
     extension_url = os.getenv('EXTENSION_URL')
 
     # Check if credentials are provided
-    if not email or not password:
+    if not email_username or not password:
         logging.error('No username or password provided. Please set the GRASS_USER and GRASS_PASS environment variables.')
         return  # Exit the script if credentials are not provided
 
@@ -63,7 +65,7 @@ def run():
         handle_cookie_banner(driver)
         logging.info('Entering credentials...')
         username = driver.find_element(By.NAME,"user")
-        username.send_keys(email)
+        username.send_keys(email_username)
         passwd = driver.find_element(By.NAME,"password")
         passwd.send_keys(password)
         

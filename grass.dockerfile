@@ -3,8 +3,8 @@ FROM debian:stable-slim
 # Set environment variables
 ENV EXTENSION_ID=ilehaonighjijnmpnagapkhpcdbhclfg
 ENV EXTENSION_URL='https://app.getgrass.io/'
-ENV GIT_USERNAME=warren-bank
-ENV GIT_REPO=chrome-extension-downloader
+ENV GIT_USERNAME=sryze
+ENV GIT_REPO=crx-dl
 
 # Install necessary packages then clean up to reduce image size
 RUN apt update && \
@@ -23,10 +23,10 @@ RUN apt update && \
 
 # Download crx downloader from git
 RUN git clone "https://github.com/${GIT_USERNAME}/${GIT_REPO}.git" && \
-    chmod +x ./${GIT_REPO}/bin/*
+    chmod +x ./${GIT_REPO}/crx-dl.py
 
 # Download the extension selected
-RUN ./${GIT_REPO}/bin/crxdl $EXTENSION_ID
+RUN python3 ./${GIT_REPO}/crx-dl.py $EXTENSION_ID
 
 # Install python requirements
 COPY grass_main.py .
