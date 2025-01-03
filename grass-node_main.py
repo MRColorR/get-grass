@@ -146,13 +146,13 @@ def handle_cookie_banner(driver):
     except Exception:
         pass
 
-def login_to_website(driver, email, password, login_url, max_retry_multiplier):
+def login_to_website(driver, email_username, password, login_url, max_retry_multiplier):
     """
     Log in to the website using the given WebDriver instance.
 
     Args:
         driver (webdriver): The WebDriver instance.
-        email (str): The user email.
+        email_username (str): The user email or username.
         password (str): The user password.
         login_url (str): The login URL.
         max_retry_multiplier (int): The maximum number of retry attempts.
@@ -179,7 +179,7 @@ def login_to_website(driver, email, password, login_url, max_retry_multiplier):
             logging.info('Entering credentials...')
             username = driver.find_element(By.NAME, "user")
             username.clear()
-            username.send_keys(email)
+            username.send_keys(email_username)
             passwd = driver.find_element(By.NAME, "password")
             passwd.clear()
             passwd.send_keys(password)
@@ -396,7 +396,7 @@ def main():
     logging.info('Launching Grass node application...')
     
     # Read variables from the OS environment making compatible with both USER_EMAIL and also as fallback GRASS_EMAIL (from lite img)
-    email = os.getenv('USER_EMAIL') or os.getenv('GRASS_EMAIL') or os.getenv('GRASS_USER') or os.getenv('GRASS_USERNAME')
+    email_username = os.getenv('USER_EMAIL') or os.getenv('GRASS_EMAIL') or os.getenv('GRASS_USER') or os.getenv('GRASS_USERNAME')
     password = os.getenv('USER_PASSWORD') or os.getenv('GRASS_PASSWORD') or os.getenv('GRASS_PASS')
     extension_ids = os.getenv('EXTENSION_IDS').split(',')
     extension_urls = os.getenv('EXTENSION_URLS').split(',')
@@ -404,7 +404,7 @@ def main():
     max_retry_multiplier = int(os.getenv('MAX_RETRY_MULTIPLIER', 3))  # Default to 3 if not set
     
     # Check if credentials are provided
-    if not email or not password:
+    if not email_username or not password:
         logging.error('No username or password provided. Please set the USER_EMAIL and USER_PASSWORD environment variables.')
         return
 
@@ -419,7 +419,7 @@ def main():
 
             for extension_id, extension_url, crx_download_url in zip(extension_ids, extension_urls, crx_download_urls):
                 # Perform initial login
-                login_to_website(driver, email, password, extension_url, max_retry_multiplier)
+                login_to_website(driver, email_username, password, extension_url, max_retry_multiplier)
                 
                 # Download and install the latest extension
                 crx_file_path = download_and_extract_extension(driver, extension_id, crx_download_url)
@@ -435,7 +435,7 @@ def main():
             
             # Log in again and check the connection status for each extension
             for extension_id, extension_url in zip(extension_ids, extension_urls):
-                login_to_website(driver, email, password, extension_url, max_retry_multiplier)
+                login_to_website(driver, email_username, password, extension_url, max_retry_multiplier)
                 window_handle = check_and_connect(driver, extension_id, max_retry_multiplier)
                 extension_window_handles[extension_id] = window_handle
             
