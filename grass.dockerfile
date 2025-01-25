@@ -15,10 +15,13 @@ ENV EXTENSION_URLS=${EXTENSION_URL}
 ENV CRX_DOWNLOAD_URLS=${CRX_DOWNLOAD_URLS}
 # In case of error multiply all backoff-timings of this value
 ENV MAX_RETRY_MULTIPLIER=3
+# Enable headless mode
+ENV HEADLESS=true
 
 
 # Install necessary packages then clean up to reduce image size
-RUN apt update && \
+RUN set -e; \
+    apt update && \
     apt upgrade -y && \
     apt install -qqy \
     curl \
@@ -27,17 +30,20 @@ RUN apt update && \
     chromium \
     chromium-driver \
     python3 \
-    python3-selenium && \
+    python3-requests \
+    python3-selenium \
+    coreutils \
+    bash && \
     apt autoremove --purge -y && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Download crx downloader from git
-RUN git clone "https://github.com/${GIT_USERNAME}/${GIT_REPO}.git" && \
-    chmod +x ./${GIT_REPO}/crx-dl.py
+# # Download crx downloader from git
+# RUN git clone "https://github.com/${GIT_USERNAME}/${GIT_REPO}.git" && \
+#     chmod +x ./${GIT_REPO}/crx-dl.py
 
-# Download the extension selected
-RUN python3 ./${GIT_REPO}/crx-dl.py $EXTENSION_ID
+# # Download the extension selected
+# RUN python3 ./${GIT_REPO}/crx-dl.py $EXTENSION_ID
 
 # Install python requirements
 COPY grass_main.py .
