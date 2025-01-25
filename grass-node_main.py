@@ -44,8 +44,10 @@ def download_and_extract_extension(driver, extension_id, crx_download_url):
     
     try:
         if crx_download_url.startswith('https://chromewebstore.google.com'):
+            logging.info('Downloading the extension from the Chrome Web Store...')
             crx_file_path = download_from_chrome_webstore(extension_id, extension_dir)
         else:
+            logging.info('Downloading the extension from the provider website...')
             crx_file_path = download_from_provider_website(driver, extension_id, crx_download_url, extension_dir)
         
         logging.info(f"Extension extracted to {crx_file_path}")
@@ -70,13 +72,14 @@ def download_from_chrome_webstore(extension_id, extension_dir):
     Raises:
         subprocess.CalledProcessError: If there is an error during the download process.
     """
-    GIT_USERNAME = 'warren-bank'
-    GIT_REPO = 'chrome-extension-downloader'
+    GIT_USERNAME = 'sryze'
+    GIT_REPO = 'crx-dl'
     logging.info(f'Using {GIT_USERNAME}/{GIT_REPO} to download the extension CRX file from the Chrome Web Store...')
     subprocess.run(["git", "clone", f"https://github.com/{GIT_USERNAME}/{GIT_REPO}.git"], check=True)
-    subprocess.run(["chmod", "+x", f"./{GIT_REPO}/bin/*"], check=True)
+    subprocess.run(["chmod", "+x", f"./{GIT_REPO}/crx-dl.py"], check=True)
     crx_file_path = os.path.join(extension_dir, f"{extension_id}.crx")
-    subprocess.run([f"./{GIT_REPO}/bin/crxdl", extension_id, crx_file_path], check=True)
+    os.makedirs(extension_dir, exist_ok=True)
+    subprocess.run(["python3", f"./{GIT_REPO}/crx-dl.py", f"-o={crx_file_path}", extension_id], check=True)
     return crx_file_path
 
 

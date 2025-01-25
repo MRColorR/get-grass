@@ -3,8 +3,19 @@ FROM debian:stable-slim
 # Set environment variables
 ENV EXTENSION_ID=ilehaonighjijnmpnagapkhpcdbhclfg
 ENV EXTENSION_URL='https://app.getgrass.io/'
+ENV CRX_DOWNLOAD_URLS='https://chromewebstore.google.com/detail/grass-lite-node/ilehaonighjijnmpnagapkhpcdbhclfg'
 ENV GIT_USERNAME=sryze
 ENV GIT_REPO=crx-dl
+
+# Comma-separated list of extension IDs (extension chrome webstore id)
+ENV EXTENSION_IDS=${EXTENSION_ID}
+# Comma-separated list of extension URLs (app dashboard website url)
+ENV EXTENSION_URLS=${EXTENSION_URL}
+# Comma-separated list of CRX download URLs (either direct URLs or Chrome Web Store URLs)
+ENV CRX_DOWNLOAD_URLS=${CRX_DOWNLOAD_URLS}
+# In case of error multiply all backoff-timings of this value
+ENV MAX_RETRY_MULTIPLIER=3
+
 
 # Install necessary packages then clean up to reduce image size
 RUN apt update && \
