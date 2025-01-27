@@ -238,7 +238,7 @@ def initialize_driver(crx_file_paths=None):
     driver_options = Options()
     driver_options.add_argument('--no-sandbox')  # Disables the sandbox security feature for compatibility in containerized environments
     driver_options.add_argument('--disable-dev-shm-usage')  # Prevents Chrome from using /dev/shm to avoid limited shared memory issues in Docker
-    driver_options.add_argument('start-maximized')  # Starts the browser maximized to ensure all elements are visible and interactable
+    driver_options.add_argument('--start-maximized')  # Starts the browser maximized to ensure all elements are visible and interactable
     driver_options.add_experimental_option('prefs', {'extensions.ui.developer_mode': True})  # Enables developer mode for extensions
 
     # Check for headless mode
