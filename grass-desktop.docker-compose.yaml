@@ -1,0 +1,21 @@
+services:
+  grass-desktop:
+    build:
+      context: .
+      dockerfile: grass-desktop.dockerfile
+    environment:
+      USER_EMAIL: ${USER_EMAIL}
+      USER_PASSWORD: ${USER_PASSWORD}
+      MAX_RETRY_MULTIPLIER: ${MAX_RETRY_MULTIPLIER}
+      
+    ports:
+      - "5900:5900"
+      - "6080:6080"
+    tty: true
+    stdin_open: true
+    # develop:
+    #   watch:
+    #     - action: sync
+    #       path: ./
+    #       target: /app/
+

@@ -1,9 +1,9 @@
 # --- Stage 1: Build Stage to Patch Grass Deb ---
     FROM debian:stable-slim AS grass-deb-patcher
 
-    ARG GRASS_VERSION="4.30.0"
+    ARG GRASS_VERSION="4.31.2"
     ARG GRASS_ARCH="amd64"
-    ARG GRASS_PACKAGE_URL="https://files.getgrass.io/file/grass-extension-upgrades/ubuntu-22.04/grass_${GRASS_VERSION}_${GRASS_ARCH}.deb"
+    ARG GRASS_PACKAGE_URL="https://files.getgrass.io/file/grass-extension-upgrades/ubuntu-22.04/Grass_${GRASS_VERSION}_${GRASS_ARCH}.deb"
     
     RUN apt-get update && apt-get install -y --no-install-recommends \
         binutils \
@@ -38,7 +38,10 @@
         apt-get install -y --no-install-recommends \
         xdotool \
         ca-certificates \
-        dpkg
+        dpkg \
+        libayatana-appindicator3-1 \
+        libwebkit2gtk-4.1-0 \ 
+        libgtk-3-0
     
     # Copy patched deb from builder stage
     COPY --from=grass-deb-patcher /tmp/grass.deb /tmp/grass.deb
