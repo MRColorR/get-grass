@@ -74,8 +74,15 @@ def download_from_chrome_webstore(extension_id, extension_dir):
     """
     GIT_USERNAME = 'sryze'
     GIT_REPO = 'crx-dl'
-    logging.info(f'Using {GIT_USERNAME}/{GIT_REPO} to download the extension CRX file from the Chrome Web Store...')
+    # Remove the crx-dl repository if it already exists to avoid conflicts
+    if os.path.exists(GIT_REPO):
+        logging.info(f'Removing existing {GIT_REPO} directory...')
+        subprocess.run(["rm", "-rf", GIT_REPO], check=True)
+    
+    # Clone the crx-dl repository then download the extension
+    logging.info(f'Cloning the {GIT_USERNAME}/{GIT_REPO} repository...')
     subprocess.run(["git", "clone", f"https://github.com/{GIT_USERNAME}/{GIT_REPO}.git"], check=True)
+    logging.info(f'Using {GIT_USERNAME}/{GIT_REPO} to download the extension CRX file from the Chrome Web Store...')
     subprocess.run(["chmod", "+x", f"./{GIT_REPO}/crx-dl.py"], check=True)
     crx_file_path = os.path.join(extension_dir, f"{extension_id}.crx")
     os.makedirs(extension_dir, exist_ok=True)
