@@ -1,8 +1,9 @@
 # Grass (GetGrass) Docker Container 🚀
+🌟 **If you find this project helpful, please consider leaving a star. Your support is appreciated!🙂** 
+
 ![Docker Pulls](https://img.shields.io/docker/pulls/mrcolorrain/grass?style=flat-square&link=https://hub.docker.com/r/mrcolorrain/grass)
 ![Docker Stars](https://img.shields.io/docker/stars/mrcolorrain/grass?style=flat-square&link=https://hub.docker.com/r/mrcolorrain/grass)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/mrcolorr/get-grass/grass_auto_build-push.yml?style=flat&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fmrcolorrain%2Fgrass)
-🌟 **If you find this project helpful, please consider leaving a star. Your support is appreciated!🙂** 
 
 ## Introduction 📖
 This repository hosts the Dockerfiles and necessary configurations for the unofficial [GetGrass](https://app.getgrass.io/register/?referralCode=qyvJmxgNUhcLo2f) Docker images for grass lite, grass node and grass desktop flavors. It's designed to facilitate the deployment of Grass (GetGrass) in Docker environments, supporting both x86_64 and arm64 architectures.
