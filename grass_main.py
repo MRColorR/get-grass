@@ -141,20 +141,24 @@ def download_from_provider_website(driver, extension_id, crx_download_url, exten
 # function to handle cookie banner: If a cookie banner is present press the button containing the accept text
 def handle_cookie_banner(driver):
     """
-    Handle the cookie banner by clicking the "Accept" button if it's present.
+    Handle the cookie banner by clicking the "ACCEPT ALL" button if it's present.
 
     Args:
         driver (webdriver): The WebDriver instance.
     """
     try:
-        cookie_banner = driver.find_element(By.XPATH, "//button[contains(text(), 'ACCEPT')]")
-        if cookie_banner:
+        # Match button by visible text
+        cookie_button = driver.find_element(By.XPATH, "//button[contains(translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'ACCEPT ALL')]")
+        
+        if cookie_button:
             logging.info('Cookie banner found. Accepting cookies...')
-            cookie_banner.click()
-            time.sleep(random.randint(3, 11))
+            cookie_button.click()
+            time.sleep(random.randint(3, 11))  # simulate human behavior
             logging.info('Cookies accepted.')
-    except Exception:
-        pass
+    except NoSuchElementException:
+        logging.info("No cookie banner found.")
+    except Exception as e:
+        logging.warning(f"Unexpected error while handling cookie banner: {e}")
 
 def login_to_website(driver, email_username, password, login_url, max_retry_multiplier):
     """
@@ -182,21 +186,31 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
             logging.info(f'Waiting for the login page {login_url} to load...')
             
             WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.XPATH, "//button[text()='ACCESS MY ACCOUNT']"))
+                EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'CONTINUE')]"))
             )
             logging.info('Login page loaded successfully!')
             handle_cookie_banner(driver)
             logging.info('Entering credentials...')
-            username = driver.find_element(By.NAME, "user")
+            username = driver.find_element(By.NAME, "email")
             username.clear()
             username.send_keys(email_username)
+            logging.info("Entered username")
+            button = driver.find_element(By.XPATH, "//button[contains(text(), 'CONTINUE')]")
+            button.click()
+            use_password_instead = WebDriverWait(driver, 30).until(
+               EC.element_to_be_clickable((By.XPATH, "//p[translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')='USE PASSWORD INSTEAD']"))
+            )
+            use_password_instead.click()
+
+            logging.info("Clicked on Use Password Instead......")
+            time.sleep(random.random(3,7))
             passwd = driver.find_element(By.NAME, "password")
             passwd.clear()
             passwd.send_keys(password)
             time.sleep(random.randint(3, 11))
             
             logging.info('Clicking the login button...')
-            login_button = driver.find_element(By.XPATH, "//button[text()='ACCESS MY ACCOUNT']")
+            login_button = driver.find_element(By.XPATH, "//button[contains(translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'SIGN IN')]")
             login_button.click()
             
             logging.info('Waiting for login to complete...')
