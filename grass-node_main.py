@@ -15,12 +15,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     NoSuchElementException, TimeoutException, WebDriverException
 )
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 
 
 def setup_logging():
     """Set up logging for the script."""
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
 
 def download_and_extract_extension(driver, extension_id, crx_download_url):
     """
@@ -156,6 +157,123 @@ def handle_cookie_banner(driver):
     except Exception:
         pass
 
+def human_like_typing(element, text):
+    # Clear the field
+    element.clear()
+    
+    # Type with random delays between keystrokes
+    for char in text:
+        # Random delay between 0.05 and 0.25 seconds
+        time_to_wait = random.uniform(0.05, 0.25)
+        time.sleep(time_to_wait)
+        element.send_keys(char)
+        
+        # Occasionally add a typo and correct it (roughly 5% chance)
+        if random.random() < 0.05:
+            # Make a typo
+            typo_chars = "qwertyuiopasdfghjklzxcvbnm"
+            typo = random.choice(typo_chars)
+            element.send_keys(typo)
+            
+            # Wait a bit before correcting
+            time.sleep(random.uniform(0.1, 0.3))
+            
+            # Press backspace to delete the typo
+            element.send_keys('\b')
+            time.sleep(random.uniform(0.1, 0.2))
+
+
+def wait_if_recaptcha_present(driver, timeout=300, iframe_wait_time=10):
+    logging.info("Waiting to see if reCAPTCHA iframe appears...")
+
+    try:
+        WebDriverWait(driver, iframe_wait_time).until(
+            EC.presence_of_element_located((By.XPATH, "//iframe[contains(@src, 'recaptcha')]"))
+        )
+        logging.info("reCAPTCHA iframe detected.")
+    except TimeoutException:
+        logging.info("No reCAPTCHA iframe detected after waiting. Continuing...")
+        return
+
+    logging.info("Trying to force iframe/container to be visible by removing dynamic hiding classes...")
+
+    driver.execute_script("""
+        const iframe = document.querySelector("iframe[src*='recaptcha']");
+        if (iframe) {
+            // Traverse up to container
+            let container = iframe.closest('div');
+            while (container && container !== document.body) {
+                const computedStyle = window.getComputedStyle(container);
+                if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden' || computedStyle.opacity === '0') {
+                    // Remove classes responsible for hiding
+                    container.className = '';
+                }
+                container = container.parentElement;
+            }
+
+            // Ensure iframe itself is visible
+            iframe.style.display = 'block';
+            iframe.style.visibility = 'visible';
+            iframe.style.opacity = '1';
+            iframe.style.transform = 'scale(1)';
+        }
+    """)
+    time.sleep(2)
+
+    # Try switching into iframe now
+    try:
+        iframe = driver.find_element(By.XPATH, "//iframe[contains(@src, 'recaptcha')]")
+        driver.switch_to.frame(iframe)
+        checkbox = driver.find_element(By.CLASS_NAME, "recaptcha-checkbox-border")
+        logging.info("reCAPTCHA checkbox is now visible.")
+    except NoSuchElementException:
+        driver.switch_to.default_content()
+        logging.error("Checkbox still not found. CAPTCHA likely not solvable at this point.")
+        return
+
+    # Trigger CAPTCHA Solver
+    logging.info("Triggering CAPTCHA Solver shortcut (Ctrl+P)...")
+    actions = ActionChains(driver)
+    actions.key_down(Keys.CONTROL).send_keys('p').key_up(Keys.CONTROL).perform()
+
+    # Wait for success
+    logging.info("Waiting for reCAPTCHA to be ticked...")
+    end_time = time.time() + timeout
+    while time.time() < end_time:
+        try:
+            border = driver.find_element(By.CLASS_NAME, "recaptcha-checkbox-border")
+            style = border.get_attribute("style")
+            if style and "display: none" in style:
+                logging.info("reCAPTCHA ticked! Proceeding...")
+                driver.switch_to.default_content()
+                return
+            time.sleep(2)
+        except Exception as e:
+            logging.debug(f"Error during wait: {e}")
+            time.sleep(2)
+
+    driver.switch_to.default_content()
+    raise TimeoutError("Timed out waiting for reCAPTCHA to be ticked.")
+
+
+def check_login_block(driver, wait_time=3600):
+    try:
+        logging.info("Checking for login block popup...")
+
+        # Look for the error toast/popup by class or text
+        error_box = WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Too many failed login attempts')]"))
+        )
+        if error_box:
+            logging.warning("Login blocked due to too many attempts. Waiting for 1 hour...")
+            time.sleep(wait_time)
+            driver.refresh()  # You can also restart the whole login sequence if needed
+            return True
+
+    except TimeoutException:
+        logging.info("No login block detected.")
+        return False
+
 def login_to_website(driver, email_username, password, login_url, max_retry_multiplier):
     """
     Log in to the website using the given WebDriver instance.
@@ -180,23 +298,66 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
             driver.switch_to.window(driver.window_handles[-1])
             driver.get(login_url)
             logging.info(f'Waiting for the login page {login_url} to load...')
-            
+
             WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.XPATH, "//button[text()='ACCESS MY ACCOUNT']"))
+                EC.presence_of_element_located((By.XPATH, "//button[text()='CONTINUE']"))
             )
             logging.info('Login page loaded successfully!')
+
+            # Cookie handler
             handle_cookie_banner(driver)
+            time.sleep(random.randint(2, 3))
+            logging.info('Load Cookie successfully!')
+
+            # Email (Human like typing)
             logging.info('Entering credentials...')
-            username = driver.find_element(By.NAME, "user")
+            username = driver.find_element(By.NAME, "email")
             username.clear()
-            username.send_keys(email_username)
+            human_like_typing(username, email_username)
+            time.sleep(random.randint(2, 5))
+            continue_button = driver.find_element(By.XPATH, "//button[text()='CONTINUE']")
+            continue_button.click()
+            
+            # ⏳ Wait and handle cooldown block
+            # Wait around 1 hours after to many retry
+            if check_login_block(driver):
+                return  # or restart the login process manually
+
+            # reCaptcha handler
+            wait_if_recaptcha_present(driver)
+            logging.info('Clicking the continue button after captcha...')
+            # Now hide reCAPTCHA iframe block
+            driver.execute_script("""
+                const iframe = document.querySelector("iframe[src*='recaptcha']");
+                if (iframe) {
+                    iframe.style.display = 'none';
+                    let container = iframe.closest('div');
+                    if (container) {
+                        container.style.display = 'none';
+                    }
+                }
+            """)
+
+            time.sleep(random.randint(2, 11))
+            continue_button = driver.find_element(By.XPATH, "//button[text()='CONTINUE']")
+            continue_button.click()
+
+            logging.info('Clicking the use password instead of mail code button...')
+            time.sleep(random.randint(10, 11))
+            use_password_instead = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//p[translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')='USE PASSWORD INSTEAD']"))
+            )
+            use_password_instead.click()
+            
+            logging.info('Write password..')
+            time.sleep(random.randint(5, 11))
             passwd = driver.find_element(By.NAME, "password")
             passwd.clear()
             passwd.send_keys(password)
             time.sleep(random.randint(3, 11))
             
-            logging.info('Clicking the login button...')
-            login_button = driver.find_element(By.XPATH, "//button[text()='ACCESS MY ACCOUNT']")
+            logging.info('Clicking the sign in button...')
+            login_button = driver.find_element(By.XPATH, "//button[contains(translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'SIGN IN')]")
             login_button.click()
             
             logging.info('Waiting for login to complete...')
@@ -204,7 +365,6 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
                 EC.presence_of_element_located((By.XPATH, "//button[text()='Logout']"))
             )
             logging.info('Login successful!')
-            handle_cookie_banner(driver)
             time.sleep(random.randint(3, 11))
             return True
         except (NoSuchElementException, TimeoutException) as e:
@@ -397,6 +557,27 @@ def safe_quit(driver):
     else:
         logging.info('WebDriver is not active or already closed.')
 
+# def add_shortcut_key_recaptcha_resolver(driver):
+#     try:
+#         # Find the element containing your extension's name
+#         containers = driver.find_elements(By.TAG_NAME, "extensions-keyboard-shortcuts")
+#         for container in containers:
+#             if "CAPTCHA Solver: auto hCAPTCHA reCAPTCHA freely" in container.text:
+#                 logging.info("Found CAPTCHA Solver shortcut entry.")
+#                 input_field = container.find_element(By.TAG_NAME, "cr-icon-button")
+#                 input_field.click()
+#                 time.sleep(1)
+
+#                 # Send Ctrl + P to the input
+#                 actions = ActionChains(driver)
+#                 actions.key_down(Keys.CONTROL).send_keys('p').key_up(Keys.CONTROL).perform()
+#                 logging.info("Shortcut Ctrl + P set for CAPTCHA Solver.")
+#                 break
+#         else:
+#             logging.warning("CAPTCHA Solver not found in shortcuts list.")
+
+#     except Exception as e:
+#         logging.error(f"Error setting shortcut: {e}")
 
 def main():
     """
@@ -411,7 +592,10 @@ def main():
     extension_ids = os.getenv('EXTENSION_IDS').split(',')
     extension_urls = os.getenv('EXTENSION_URLS').split(',')
     crx_download_urls = os.getenv('CRX_DOWNLOAD_URLS').split(',')
-    max_retry_multiplier = int(os.getenv('MAX_RETRY_MULTIPLIER', 3))  # Default to 3 if not set
+    grass_login_urls = os.getenv('GRASS_LOGIN_URLS').split(',')
+    recaptcha_resolver_extension_ids = os.getenv('RECAPTCHA_RESOLVER_IDS').split(',')
+    recaptcha_resolver_extension_urls = os.getenv('RECAPTCHA_RESOLVER_URLS').split(',')
+    max_retry_multiplier = 3
     
     # Check if credentials are provided
     if not email_username or not password:
@@ -427,9 +611,29 @@ def main():
             driver = initialize_driver()
             extension_window_handles = {}
 
+            for recaptcha_resolver_extension_id, recaptcha_resolver_extension_url in zip(recaptcha_resolver_extension_ids, recaptcha_resolver_extension_urls):
+                crx_file_path = download_and_extract_extension(driver, recaptcha_resolver_extension_id, recaptcha_resolver_extension_url)
+                crx_file_paths.append(crx_file_path)
+
+                # # Add extensions shortcut
+                # driver.get("chrome://extensions/shortcuts")
+                # time.sleep(2)  # Wait for the page to fully render
+
+                # add_shortcut_key_recaptcha_resolver(driver)
+            
+            logging.info('Closing the browser and re-initializing it with the reCaptcha Solver extensions...')
+            safe_quit(driver)
+            driver = None  # Reset driver to None after quitting
+            
+            # Re-initialize the browser with the new extensions
+            driver = initialize_driver(crx_file_paths)
+            logging.info('Browser re-initialized with the extensions installed.')
+
             for extension_id, extension_url, crx_download_url in zip(extension_ids, extension_urls, crx_download_urls):
+
                 # Perform initial login
-                login_to_website(driver, email_username, password, extension_url, max_retry_multiplier)
+                login_to_website(driver, email_username, password, grass_login_urls, max_retry_multiplier)
+                # print(driver, email_username, password, grass_login_urls, max_retry_multiplier)
                 
                 # Download and install the latest extension
                 crx_file_path = download_and_extract_extension(driver, extension_id, crx_download_url)
