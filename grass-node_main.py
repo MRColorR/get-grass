@@ -186,14 +186,14 @@ def human_like_typing(element, text):
 def wait_if_recaptcha_present(driver, timeout=300, iframe_wait_time=10):
     logging.info("Waiting to see if reCAPTCHA iframe appears...")
 
-    try:
-        WebDriverWait(driver, iframe_wait_time).until(
-            EC.presence_of_element_located((By.XPATH, "//iframe[contains(@src, 'recaptcha')]"))
-        )
-        logging.info("reCAPTCHA iframe detected.")
-    except TimeoutException:
-        logging.info("No reCAPTCHA iframe detected after waiting. Continuing...")
-        return
+    # try:
+    #     WebDriverWait(driver, iframe_wait_time).until(
+    #         EC.presence_of_element_located((By.XPATH, "//iframe[contains(@src, 'recaptcha')]"))
+    #     )
+    #     logging.info("reCAPTCHA iframe detected.")
+    # except TimeoutException:
+    #     logging.info("No reCAPTCHA iframe detected after waiting. Continuing...")
+    #     return
 
     logging.info("Trying to force iframe/container to be visible by removing dynamic hiding classes...")
 
@@ -592,7 +592,7 @@ def main():
     extension_ids = os.getenv('EXTENSION_IDS').split(',')
     extension_urls = os.getenv('EXTENSION_URLS').split(',')
     crx_download_urls = os.getenv('CRX_DOWNLOAD_URLS').split(',')
-    grass_login_urls = os.getenv('GRASS_LOGIN_URLS').split(',')
+    grass_login_urls = os.getenv('GRASS_LOGIN_URLS')
     recaptcha_resolver_extension_ids = os.getenv('RECAPTCHA_RESOLVER_IDS').split(',')
     recaptcha_resolver_extension_urls = os.getenv('RECAPTCHA_RESOLVER_URLS').split(',')
     max_retry_multiplier = 3
