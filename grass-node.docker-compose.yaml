@@ -1,8 +1,6 @@
 services:
   grass-node:
-    build:
-      context: .
-      dockerfile: grass-node.dockerfile
+    image: vietbumflag/node-getgrass:latest
     environment:
       USER_EMAIL: ${USER_EMAIL}
       USER_PASSWORD: ${USER_PASSWORD}
@@ -19,9 +17,9 @@ services:
       - "6080:6080"
     tty: true
     stdin_open: true
-    develop:
-      watch:
-        - action: sync
-          path: ./
-          target: /app/
+    # develop:
+    #   watch:
+    #     - action: sync
+    #       path: ./
+    #       target: /app/
 
