@@ -1,7 +1,7 @@
 # --- Stage 1: Build Stage to Patch Grass Deb ---
     FROM debian:stable-slim AS grass-deb-patcher
 
-    ARG GRASS_VERSION="5.1.1"
+    ARG GRASS_VERSION="5.3.1"
     ARG GRASS_ARCH="amd64"
     ARG GRASS_PACKAGE_URL="https://files.getgrass.io/file/grass-extension-upgrades/ubuntu-22.04/Grass_${GRASS_VERSION}_${GRASS_ARCH}.deb"
     
@@ -31,6 +31,7 @@
     ENV PYTHONUNBUFFERED=1
     # In case of error multiply all backoff-timings of this value
     ENV MAX_RETRY_MULTIPLIER=3
+    ENV TRY_AUTOLOGIN=true
 
     # We only install what's needed to run Grass and configure it
     RUN set -e; \

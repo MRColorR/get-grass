@@ -64,11 +64,19 @@ This section provides instructions on how to use the grass-node extension if you
 ## Grass-Desktop 🖥️
 we have also a Grass Desktop image available. This section provides instructions on how to use the grass-desktop GUI application fully automated inside a container.  Just in case you want to use this instead of the standard grass-node or grass extension available in the other images. 
 _Note: This GUI version is heavier than the other images due to the additional components required to run a full desktop environment._
-- ### Docker cli 🐳
+
+### Environment Variables
+- `USER_EMAIL` or `GRASS_EMAIL` or `GRASS_USER`: Your Grass account email
+- `USER_PASSWORD` or `GRASS_PASSWORD` or `GRASS_PASS`: Your Grass account password
+- `TRY_AUTOLOGIN`: Set to "true" to enable automatic login. Set to "false" to disable automatic login and require manual interaction.
+- `MAX_RETRY_MULTIPLIER`: (Optional) A number to multiply retry timings. Default is 3. Increase this if you experience timing issues with auto-login.
+
+### Docker cli 🐳
   ```bash
-  docker run -d --name grass-desktop -h my_device -e USER_EMAIL=your_email -e USER_PASSWORD=your_password -p 5900:5900 -p 6080:6080 mrcolorrain/grass-desktop
+  docker run -d --name grass-desktop -h my_device -e USER_EMAIL=your_email -e USER_PASSWORD=your_password -e TRY_AUTOLOGIN=false -p 5900:5900 -p 6080:6080 mrcolorrain/grass-desktop
   ```
-- ### Docker compose 🐳
+
+### Docker compose 🐳
   ```yaml
   version: "3.9"
   services:
@@ -79,11 +87,14 @@ _Note: This GUI version is heavier than the other images due to the additional c
       environment:
         USER_EMAIL: your_email
         USER_PASSWORD: your_password
+        TRY_AUTOLOGIN: "false"
       ports:
         - "5900:5900"
         - "6080:6080"
   ```
   _Default vnc password is the default password of [vnc-browser](https://github.com/MRColorR/vnc-browser) image. (Currently it should be: `money4band`)_
+
+  **Note on Auto-Login**: When `TRY_AUTOLOGIN` is enabled, the container will attempt to automatically log in using the provided credentials. If auto-login fails or credentials are missing, it will fall back to manual mode where you can interact with the Grass interface through VNC.
 
 
 ## Contributing 🤲
