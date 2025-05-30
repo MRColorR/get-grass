@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 import os
 import requests
-import zipfile
 import json
 import logging
 import random
 import time
 import subprocess
+import zipfile
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -15,6 +15,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     NoSuchElementException, TimeoutException, WebDriverException
 )
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 
 class LoginFailedError(Exception):
     pass
@@ -71,7 +73,7 @@ def download_and_extract_extension(driver, extension_id, crx_download_url, exten
                 extension_id, 
                 crx_download_url, 
                 extension_dir,
-                need_auth,
+                require_auth,
                 auth_data
             )
         
@@ -134,91 +136,179 @@ def download_from_provider_website(driver, extension_id, crx_download_url, exten
     """
     logging.info('Using the defined URL to download the extension CRX file from the provider website...')
     logging.info('Fetching the latest release information...')
-    driver.get(crx_download_url)
-    response_text = driver.execute_script("return document.body.textContent")
+    
     try:
+        # Get the API response using Selenium (maintains session/auth)
+        driver.get(crx_download_url)
+        response_text = driver.execute_script("return document.body.textContent")
         response_json = json.loads(response_text)
-    except json.JSONDecodeError as e:
-        logging.error(f"Failed to decode JSON response from provider: {e}")
-        logging.error(f"Response text was: {response_text[:500]}...")
-        raise ExtensionDownloadError(f"Failed to decode JSON response from provider: {e}")
-
-    if not isinstance(response_json, dict):
-        logging.error(f"API response is not a JSON object. Got: {type(response_json)}")
-        raise ExtensionDownloadError(f"API response is not a JSON object. Got: {type(response_json)}")
-
-    if 'result' not in response_json:
-        logging.error(f"'result' key missing from API response. Response keys: {response_json.keys()}")
-        raise ExtensionDownloadError("'result' key missing from API response.")
-    
-    result_data = response_json['result']
-    if not isinstance(result_data, dict):
-        logging.error(f"'result' field is not a JSON object. Got: {type(result_data)}")
-        raise ExtensionDownloadError(f"'result' field is not a JSON object. Got: {type(result_data)}")
-
-    if 'data' not in result_data:
-        logging.error(f"'data' key missing from 'result' in API response. Result keys: {result_data.keys()}")
-        raise ExtensionDownloadError("'data' key missing from 'result' in API response.")
-    
-    data_content = result_data['data']
-    if not isinstance(data_content, dict):
-        logging.error(f"'data' field under 'result' is not a JSON object. Got: {type(data_content)}")
-        raise ExtensionDownloadError(f"'data' field under 'result' is not a JSON object. Got: {type(data_content)}")
-
-    if 'version' not in data_content:
-        logging.error(f"'version' key missing from 'data' in API response. Data keys: {data_content.keys()}")
-        raise ExtensionDownloadError("'version' key missing from 'data' in API response.")
-    
-    if 'links' not in data_content or 'linux' not in data_content.get('links', {}):
-        logging.error(f"'links.linux' key missing or malformed in API response. Data content: {data_content}")
-        raise ExtensionDownloadError("'links.linux' key missing or malformed in API response.")
         
-    version = data_content['version']
-    linux_download_url = data_content['links']['linux']
-    
-    logging.info(f'Downloading the latest release version {version} from {linux_download_url}...')
-    response = requests.get(linux_download_url, verify=False)
-    response.raise_for_status()
-    
-    zip_file_path = os.path.join(extension_dir, f"{extension_id}.zip")
-    with open(zip_file_path, 'wb') as zip_file:
-        zip_file.write(response.content)
-        logging.info(f"Downloaded extension to {zip_file_path}")
-    
-    logging.info(f"Extracting the extension from {zip_file_path}")
-    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-        zip_ref.extractall(extension_dir)
-    
-    for root, dirs, files_in_dir in os.walk(extension_dir):
-        for file_name in files_in_dir:
-            if file_name.endswith('.crx'):
-                logging.info(f"Found CRX file: {file_name}")
-                return os.path.join(root, file_name)
-    raise FileNotFoundError('CRX file not found in the extracted folder.')
+        # Extract download information
+        data = response_json['result']['data']
+        version = data['version']
+        linux_download_url = data['links']['linux']
+        
+        logging.info(f'Downloading version {version} from {linux_download_url}...')
+        
+        # Use requests with selenium cookies for download
+        cookies = {cookie['name']: cookie['value'] for cookie in driver.get_cookies()}
+        headers = {
+            'User-Agent': driver.execute_script("return navigator.userAgent"),
+            'Accept': '*/*'
+        }
+        
+        response = requests.get(
+            linux_download_url, 
+            cookies=cookies,
+            headers=headers,
+            verify=False
+        )
+        response.raise_for_status()
+        
+        # Save the downloaded file
+        zip_file_path = os.path.join(extension_dir, f"{extension_id}.zip")
+        with open(zip_file_path, 'wb') as zip_file:
+            zip_file.write(response.content)
+            logging.info(f"Downloaded extension to {zip_file_path}")
+        
+        # Extract the zip file
+        logging.info(f"Extracting the extension from {zip_file_path}")
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+            zip_ref.extractall(extension_dir)
+        
+        # Look for the CRX file
+        for root, dirs, files in os.walk(extension_dir):
+            for file in files:
+                if file.endswith('.crx'):
+                    crx_path = os.path.join(root, file)
+                    logging.info(f"Found CRX file: {file}")
+                    return crx_path
+        
+        raise FileNotFoundError('CRX file not found in the extracted folder.')
+        
+    except json.JSONDecodeError as e:
+        logging.error(f'Failed to parse API response: {e}')
+        raise
+    except requests.exceptions.RequestException as e:
+        logging.error(f'Network error during download: {e}')
+        raise
+    except Exception as e:
+        logging.error(f'Error downloading extension: {e}')
+        raise
 
 
 def handle_cookie_banner(driver):
     """
     Handle cookie banner by clicking the accept button if it exists.
+    Uses multiple strategies to find and handle the cookie consent button.
     Args:
         driver (webdriver): The WebDriver instance.
     """
     logging.info('Checking for cookie banner...')
     try:
-        cookie_button = driver.find_element(By.XPATH, "//button[contains(translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'ACCEPT ALL')]")
-        if cookie_button:
-            logging.info('Cookie banner found. Accepting cookies...')
-            cookie_button.click()
-            time.sleep(random.randint(3, 11))
-            logging.info('Cookies accepted.')
-    except NoSuchElementException:
-        logging.info("No cookie banner found.")
-    except Exception as e:
-        logging.warning(f"Unexpected error while handling cookie banner: {e}")
+        wait = WebDriverWait(driver, 10)
+        
+        # List of possible selectors and strategies
+        selectors = [
+            # CSS Selectors
+            (By.CSS_SELECTOR, "button.chakra-button.css-1fjpdqi"),
+            (By.CSS_SELECTOR, "button.css-1fjpdqi"),
+            (By.CSS_SELECTOR, "div.css-dvf5zo button"),
+            
+            # XPath for text content variations
+            (By.XPATH, "//button[contains(., 'ACCEPT') or contains(., 'Accept')]"),
+            (By.XPATH, "//button[contains(translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'ACCEPT')]"),
+            (By.XPATH, "//button[.//span[contains(text(), 'ACCEPT')]]"),
+            
+            # Contextual XPath
+            (By.XPATH, "//div[contains(@class, 'cookie') or contains(@class, 'consent')]//button"),
+            (By.XPATH, "//div[contains(@class, 'css-dvf5zo')]//button[contains(@class, 'chakra-button')]")
+        ]
 
+        cookie_button = None
+        for by, selector in selectors:
+            try:
+                cookie_button = wait.until(
+                    EC.element_to_be_clickable((by, selector))
+                )
+                break
+            except (TimeoutException, NoSuchElementException):
+                continue
+
+        if not cookie_button:
+            logging.info('No cookie banner found with any known selector')
+            return
+
+        # Try multiple click strategies
+        click_strategies = [
+            # Strategy 1: Regular click
+            lambda: cookie_button.click(),
+            # Strategy 2: JavaScript click
+            lambda: driver.execute_script("arguments[0].click();", cookie_button),
+            # Strategy 3: Actions click
+            lambda: webdriver.ActionChains(driver).move_to_element(cookie_button).click().perform()
+        ]
+
+        for strategy in click_strategies:
+            try:
+                strategy()
+                # Wait for any modal/overlay to disappear
+                wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "css-dvf5zo")) == 0)
+                logging.info('Cookie banner handled successfully')
+                return
+            except Exception as e:
+                logging.debug(f'Click strategy failed: {str(e)}. Trying next strategy...')
+                continue
+
+        raise Exception("All click strategies failed")
+
+    except Exception as e:
+        logging.warning(f'Cookie banner handling failed: {str(e)}. Continuing execution...')
+
+def human_like_typing(element, text):
+    """
+    Simulate human-like typing with realistic delays and occasional typos.
+    
+    Args:
+        element: The web element to type into
+        text: The text to type
+    """
+    # Clear the field with natural movement
+    ActionChains(element._parent).move_to_element(element).click().perform()
+    element.clear()
+    time.sleep(random.uniform(0.5, 1.0))
+
+    # Type with random delays between keystrokes
+    for char in text:
+        # Random delay between keystrokes
+        time.sleep(random.uniform(0.05, 0.25))
+        
+        # Occasionally add a typo and correct it (roughly 5% chance)
+        if random.random() < 0.05:
+            # Make a typo
+            typo_chars = "qwertyuiopasdfghjklzxcvbnm"
+            typo = random.choice(typo_chars)
+            element.send_keys(typo)
+            
+            # Wait before correcting
+            time.sleep(random.uniform(0.1, 0.3))
+            
+            # Delete the typo
+            element.send_keys(Keys.BACKSPACE)
+            time.sleep(random.uniform(0.1, 0.2))
+        
+        # Type the correct character
+        element.send_keys(char)
+        
+        # Occasionally pause like a human thinking
+        if random.random() < 0.02:
+            time.sleep(random.uniform(0.5, 1.2))
+
+# Modify the login_to_website function to use human_like_typing
 def login_to_website(driver, email_username, password, login_url, max_retry_multiplier):
     """
     Log in to the website using the given WebDriver instance.
+    Contains delays to reduce captcha and give users time to interact.
 
     Args:
         driver (webdriver): The WebDriver instance.
@@ -236,34 +326,53 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
     max_retries = max_retry_multiplier
     for attempt in range(max_retries):
         try:
+            # Add initial delay before any login attempt
+            if attempt > 0:
+                delay = random.randint(67, 127)  # delay between attempts
+                logging.info(f'Waiting {delay} seconds before next login attempt...')
+                time.sleep(delay)
+
             driver.execute_script("window.open('');")
             driver.switch_to.window(driver.window_handles[-1])
             driver.get(login_url)
             logging.info(f'Waiting for the login page {login_url} to load...')
+            
             WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'CONTINUE')]"))
-                )
+            )
             logging.info('Login page loaded successfully!')
+            
             handle_cookie_banner(driver)
-            logging.info('Entering credentials...')
+            
+            # Add delay before entering credentials
+            time.sleep(random.randint(31, 67))
+            logging.info('Entering email...')
             username = driver.find_element(By.NAME, "email")
-            username.clear()
-            username.send_keys(email_username)
-            logging.info("Entered username")
+            human_like_typing(username, email_username)
+            logging.info("Email entered")
+
+            # Add delay before clicking continue
+            time.sleep(random.randint(17, 31))
             button = driver.find_element(By.XPATH, "//button[contains(text(), 'CONTINUE')]")
             button.click()
+
             use_password_instead = WebDriverWait(driver, 30).until(
                 EC.element_to_be_clickable((By.XPATH, "//p[translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')='USE PASSWORD INSTEAD']"))
-                )
-            use_password_instead.click()
-
-            logging.info("Clicked on Use Password Instead......")
-            time.sleep(random.randint(3, 7))
-            passwd = driver.find_element(By.NAME, "password")
-            passwd.clear()
-            passwd.send_keys(password)
-            time.sleep(random.randint(3, 11))
+            )
             
+            # Add delay before clicking "Use Password Instead"
+            time.sleep(random.randint(17, 31))
+            use_password_instead.click()
+            logging.info("Clicked on Use Password Instead")
+
+            # Add delay before entering password
+            time.sleep(random.randint(31, 67))
+            passwd = driver.find_element(By.NAME, "password")
+            human_like_typing(passwd, password)
+            logging.info("Password entered")
+
+            # Add delay before clicking sign in
+            time.sleep(random.randint(17, 31))
             logging.info('Clicking the login button...')
             login_button = driver.find_element(By.XPATH, "//button[contains(translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'SIGN IN')]")
             login_button.click()
@@ -271,17 +380,19 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
             logging.info('Waiting for login to complete...')
             WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "//button[text()='Logout']"))
-                )
+            )
             logging.info('Login successful!')
+            
+            # Add final delay after successful login
+            time.sleep(random.randint(31, 67))
             handle_cookie_banner(driver)
-            time.sleep(random.randint(3, 11))
             return True
+
         except (NoSuchElementException, TimeoutException) as e:
             logging.error(f'Error during login: {e}')
             if attempt < max_retries - 1:
                 logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
                 close_current_tab(driver)
-                time.sleep(random.randint(3, 11) * (attempt + 1))
                 continue
             else:
                 raise LoginFailedError(f"Login failed after {max_retries} attempts for user {email_username}: {e}")
@@ -290,7 +401,6 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
             if attempt < max_retries - 1:
                 logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
                 close_current_tab(driver)
-                time.sleep(random.randint(3, 11) * (attempt + 1))
                 continue
             else:
                 raise LoginFailedError(f"An unexpected error occurred during login after {max_retries} attempts for user {email_username}: {e}")
@@ -600,7 +710,7 @@ def main():
                 logging.info('All extensions connected successfully. Autologin complete.')
                 autologin_successful = True
                 break
-            except (LoginFailedError, ExtensionConnectionError, ExtensionDownloadError, WebDriverException, TimeoutException, NoSuchElementException, FileNotFoundException) as e:
+            except (LoginFailedError, ExtensionConnectionError, ExtensionDownloadError, WebDriverException, TimeoutException, NoSuchElementException, FileNotFoundError) as e:
                 logging.error(f'Autologin attempt {attempt_main + 1}/{max_retries_main} failed: {e}')
                 if driver:
                     safe_quit(driver)

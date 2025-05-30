@@ -13,6 +13,7 @@ services:
       MAX_RETRY_MULTIPLIER: ${MAX_RETRY_MULTIPLIER:-3}
       REQUIRE_AUTH_FOR_DOWNLOADS: ${REQUIRE_AUTH_FOR_DOWNLOADS:-false}
       HEADLESS: ${HEADLESS:-false}
+      CUSTOMIZE: ${CUSTOMIZE:-true}
 
       
     ports:

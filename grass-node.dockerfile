@@ -42,9 +42,6 @@ RUN set -e; \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the Supervisor configuration and Python script
-COPY grass_main.py /app/grass_main.py
-
 WORKDIR /app
 
 # Expose VNC and noVNC ports
