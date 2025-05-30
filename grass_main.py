@@ -18,6 +18,10 @@ from selenium.common.exceptions import (
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 
+# Constants
+USER_MAX_INPUT_TIME = 300  # Maximum time (in seconds) to wait for user input
+
+# Classes
 class LoginFailedError(Exception):
     pass
 
@@ -33,7 +37,7 @@ def setup_logging():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def download_and_extract_extension(driver, extension_id, crx_download_url, extension_urls=None, email_username=None, password=None, max_retry_multiplier=3, require_auth=False):
+def download_and_extract_extension(driver, extension_id, crx_download_url, extension_urls=None, email_username=None, password=None, max_retry_multiplier=3, require_auth=False, manual_mode=False):
     """
     Download and extract extension with optional authentication.
     
@@ -46,17 +50,41 @@ def download_and_extract_extension(driver, extension_id, crx_download_url, exten
         password (str, optional): User password for authentication
         max_retry_multiplier (int, optional): Max retry attempts multiplier
         require_auth (bool, optional): Whether authentication is required
+        manual_mode (bool, optional): Whether to use manual login mode
     """
     auth_data = None
     if require_auth and not crx_download_url.startswith('https://chromewebstore.google.com'):
-        if not all([extension_urls, email_username, password]):
-            raise ValueError("Missing required authentication data: need extension_urls, email_username, and password")
-        auth_data = {
-            'email': email_username,
-            'password': password,
-            'login_url': extension_urls[0],
-            'max_retry_multiplier': max_retry_multiplier
-        }
+        if manual_mode:
+            if not extension_urls:
+                raise ValueError("Extension URLs required for manual login")
+            waiting_time = USER_MAX_INPUT_TIME
+            driver.get(extension_urls[0])
+            
+            # Handle cookie banner first
+            handle_cookie_banner(driver)
+            
+            logging.info(f"Manual mode: Please log in manually in the browser window... script will wait {waiting_time // 60} minutes.")
+            try:
+                start_time = time.time()
+                while time.time() - start_time < waiting_time:
+                    if check_login_state(driver, timeout=5):
+                        logging.info("Manual login detected. Proceeding with download...")
+                        break
+                    time.sleep(2)
+                else:
+                    raise LoginFailedError(f"No login detected after {waiting_time // 60} minutes waiting for manual login")
+            except TimeoutException:
+                raise LoginFailedError(f"No login detected after {waiting_time // 60} minutes waiting for manual login")
+        else:
+            if not all([extension_urls, email_username, password]):
+                raise ValueError("Missing required authentication data: need extension_urls, email_username, and password")
+            auth_data = {
+                'email': email_username,
+                'password': password,
+                'login_url': extension_urls[0],
+                'max_retry_multiplier': max_retry_multiplier
+            }
+
     extensions_dir = 'extensions'
     os.makedirs(extensions_dir, exist_ok=True)
     extension_dir = os.path.join(extensions_dir, extension_id)
@@ -73,7 +101,7 @@ def download_and_extract_extension(driver, extension_id, crx_download_url, exten
                 extension_id, 
                 crx_download_url, 
                 extension_dir,
-                require_auth,
+                require_auth and not manual_mode,  # Only use auth check if not in manual mode
                 auth_data
             )
         
@@ -81,7 +109,8 @@ def download_and_extract_extension(driver, extension_id, crx_download_url, exten
         return crx_file_path
     except Exception as e:
         logging.error(f'Error downloading/extracting extension: {e}')
-        safe_quit(driver)
+        if not manual_mode:  # Don't quit browser in manual mode
+            safe_quit(driver)
         raise
 
 
@@ -378,9 +407,8 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
             login_button.click()
             
             logging.info('Waiting for login to complete...')
-            WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.XPATH, "//button[text()='Logout']"))
-            )
+            if not check_login_state(driver):
+                raise LoginFailedError("Login verification failed - no logout button found")
             logging.info('Login successful!')
             
             # Add final delay after successful login
@@ -428,6 +456,7 @@ def initialize_driver(crx_file_paths=None):
     # Check for headless mode
     headless_mode = os.getenv('HEADLESS', 'false').lower() == 'true'
     if headless_mode:
+        logging.info('Running in headless mode.')
         driver_options.add_argument('--headless')
 
     driver_options.add_argument(
@@ -615,6 +644,42 @@ def download_with_auth_check(driver, extension_id, crx_download_url, extension_d
         
     return download_from_provider_website(driver, extension_id, crx_download_url, extension_dir)
 
+def check_login_state(driver, timeout=30):
+    """
+    Check if user is logged in by looking for logout button with various selectors.
+    
+    Args:
+        driver: WebDriver instance
+        timeout: Seconds to wait for element (defaults to USER_MAX_INPUT_TIME)
+    Returns:
+        bool: True if logged in, False otherwise
+    """
+    selectors = [
+        # Direct button text match
+        "//button[text()='Logout']",
+        # Case-insensitive text match
+        "//button[contains(translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'LOGOUT')]",
+        # Specific class structure from your site
+        "//div[contains(@class, 'css-ir7jip')]//button[contains(@class, 'chakra-button')]//span[contains(@class, 'chakra-button__icon')]/following-sibling::text()[contains(., 'Logout')]",
+        # Generic logout button
+        "//button[contains(., 'Logout')]"
+    ]
+    
+    try:
+        for selector in selectors:
+            try:
+                WebDriverWait(driver, timeout).until(
+                    EC.presence_of_element_located((By.XPATH, selector))
+                )
+                logging.info(f"Login detected via selector: {selector}")
+                return True
+            except TimeoutException:
+                continue
+        return False
+    except Exception as e:
+        logging.warning(f"Error checking login state: {e}")
+        return False
+
 def main():
     """
     Main function to run the script.
@@ -691,7 +756,8 @@ def main():
                         email_username=email_username,
                         password=password,
                         max_retry_multiplier=max_retry_multiplier,
-                        require_auth=require_auth
+                        require_auth=require_auth,
+                        manual_mode=False
                     )
                     crx_file_paths.append(crx_file_path)
                 logging.info('Closing browser to re-initialize with extensions...')
@@ -765,7 +831,8 @@ def main():
                         email_username=email_username,
                         password=password,
                         max_retry_multiplier=max_retry_multiplier,
-                        require_auth=require_auth
+                        require_auth=require_auth,
+                        manual_mode=manual_mode_activated
                     )
                     crx_file_paths_manual.append(crx_path)
             except ExtensionDownloadError as ede: # Catch specific download error

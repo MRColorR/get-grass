@@ -1,16 +1,29 @@
-version: "3.9"
 services:
   grass:
     build:
       context: .
       dockerfile: grass.dockerfile
-    container_name: grass
-    hostname: my_device
-    image: mrcolorrain/grass
     environment:
-      - USER_EMAIL=${USER_EMAIL}
-      - USER_PASSWORD=${USER_PASSWORD}
-      - TRY_AUTOLOGIN=${TRY_AUTOLOGIN:-true}
-      - MAX_RETRY_MULTIPLIER=${MAX_RETRY_MULTIPLIER:-3}
-      - HEADLESS=${HEADLESS:-true}
-    restart: unless-stopped
+      USER_EMAIL: ${USER_EMAIL}
+      USER_PASSWORD: ${USER_PASSWORD}
+      EXTENSION_IDS: ${EXTENSION_IDS}
+      EXTENSION_URLS: ${EXTENSION_URLS}
+      CRX_DOWNLOAD_URLS: ${CRX_DOWNLOAD_URLS}
+      TRY_AUTOLOGIN: ${TRY_AUTOLOGIN:-true}
+      MAX_RETRY_MULTIPLIER: ${MAX_RETRY_MULTIPLIER:-3}
+      REQUIRE_AUTH_FOR_DOWNLOADS: ${REQUIRE_AUTH_FOR_DOWNLOADS:-false}
+      HEADLESS: ${HEADLESS:-false}
+      CUSTOMIZE: ${CUSTOMIZE:-true}
+
+      
+    ports:
+      - "5900:5900"
+      - "6080:6080"
+    tty: true
+    stdin_open: true
+    develop:
+      watch:
+        - action: sync
+          path: ./
+          target: /app/
+
