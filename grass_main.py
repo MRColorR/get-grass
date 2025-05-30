@@ -16,27 +16,45 @@ from selenium.common.exceptions import (
     NoSuchElementException, TimeoutException, WebDriverException
 )
 
+class LoginFailedError(Exception):
+    pass
+
+class ExtensionConnectionError(Exception):
+    pass
+
+class ExtensionDownloadError(Exception):
+    pass
+
 
 def setup_logging():
     """Set up logging for the script."""
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def download_and_extract_extension(driver, extension_id, crx_download_url):
+def download_and_extract_extension(driver, extension_id, crx_download_url, extension_urls=None, email_username=None, password=None, max_retry_multiplier=3, require_auth=False):
     """
-    Download and extract the latest version of the extension using the authenticated session.
-
+    Download and extract extension with optional authentication.
+    
     Args:
-        driver (webdriver): The WebDriver instance.
-        extension_id (str): The ID of the extension.
-        crx_download_url (str): The URL to download the extension.
-
-    Returns:
-        str: The path to the extracted CRX file.
-
-    Raises:
-        Exception: If there is an error during the download or extraction process.
+        driver (webdriver): The WebDriver instance
+        extension_id (str): The ID of the extension
+        crx_download_url (str): The URL to download the extension
+        extension_urls (list, optional): List of extension URLs
+        email_username (str, optional): User email for authentication
+        password (str, optional): User password for authentication
+        max_retry_multiplier (int, optional): Max retry attempts multiplier
+        require_auth (bool, optional): Whether authentication is required
     """
+    auth_data = None
+    if require_auth and not crx_download_url.startswith('https://chromewebstore.google.com'):
+        if not all([extension_urls, email_username, password]):
+            raise ValueError("Missing required authentication data: need extension_urls, email_username, and password")
+        auth_data = {
+            'email': email_username,
+            'password': password,
+            'login_url': extension_urls[0],
+            'max_retry_multiplier': max_retry_multiplier
+        }
     extensions_dir = 'extensions'
     os.makedirs(extensions_dir, exist_ok=True)
     extension_dir = os.path.join(extensions_dir, extension_id)
@@ -44,16 +62,23 @@ def download_and_extract_extension(driver, extension_id, crx_download_url):
     
     try:
         if crx_download_url.startswith('https://chromewebstore.google.com'):
-            logging.info('Downloading the extension from the Chrome Web Store...')
+            logging.info('Downloading extension from Chrome Web Store...')
             crx_file_path = download_from_chrome_webstore(extension_id, extension_dir)
         else:
-            logging.info('Downloading the extension from the provider website...')
-            crx_file_path = download_from_provider_website(driver, extension_id, crx_download_url, extension_dir)
+            logging.info('Downloading extension from provider website...')
+            crx_file_path = download_with_auth_check(
+                driver, 
+                extension_id, 
+                crx_download_url, 
+                extension_dir,
+                need_auth,
+                auth_data
+            )
         
         logging.info(f"Extension extracted to {crx_file_path}")
         return crx_file_path
     except Exception as e:
-        logging.error(f'Error downloading or extracting extension: {e}')
+        logging.error(f'Error downloading/extracting extension: {e}')
         safe_quit(driver)
         raise
 
@@ -111,13 +136,47 @@ def download_from_provider_website(driver, extension_id, crx_download_url, exten
     logging.info('Fetching the latest release information...')
     driver.get(crx_download_url)
     response_text = driver.execute_script("return document.body.textContent")
-    response_json = json.loads(response_text)
+    try:
+        response_json = json.loads(response_text)
+    except json.JSONDecodeError as e:
+        logging.error(f"Failed to decode JSON response from provider: {e}")
+        logging.error(f"Response text was: {response_text[:500]}...")
+        raise ExtensionDownloadError(f"Failed to decode JSON response from provider: {e}")
+
+    if not isinstance(response_json, dict):
+        logging.error(f"API response is not a JSON object. Got: {type(response_json)}")
+        raise ExtensionDownloadError(f"API response is not a JSON object. Got: {type(response_json)}")
+
+    if 'result' not in response_json:
+        logging.error(f"'result' key missing from API response. Response keys: {response_json.keys()}")
+        raise ExtensionDownloadError("'result' key missing from API response.")
     
-    data = response_json['result']['data']
-    version = data['version']
-    linux_download_url = data['links']['linux']
+    result_data = response_json['result']
+    if not isinstance(result_data, dict):
+        logging.error(f"'result' field is not a JSON object. Got: {type(result_data)}")
+        raise ExtensionDownloadError(f"'result' field is not a JSON object. Got: {type(result_data)}")
+
+    if 'data' not in result_data:
+        logging.error(f"'data' key missing from 'result' in API response. Result keys: {result_data.keys()}")
+        raise ExtensionDownloadError("'data' key missing from 'result' in API response.")
     
-    logging.info(f'Downloading the latest release version {version}...')
+    data_content = result_data['data']
+    if not isinstance(data_content, dict):
+        logging.error(f"'data' field under 'result' is not a JSON object. Got: {type(data_content)}")
+        raise ExtensionDownloadError(f"'data' field under 'result' is not a JSON object. Got: {type(data_content)}")
+
+    if 'version' not in data_content:
+        logging.error(f"'version' key missing from 'data' in API response. Data keys: {data_content.keys()}")
+        raise ExtensionDownloadError("'version' key missing from 'data' in API response.")
+    
+    if 'links' not in data_content or 'linux' not in data_content.get('links', {}):
+        logging.error(f"'links.linux' key missing or malformed in API response. Data content: {data_content}")
+        raise ExtensionDownloadError("'links.linux' key missing or malformed in API response.")
+        
+    version = data_content['version']
+    linux_download_url = data_content['links']['linux']
+    
+    logging.info(f'Downloading the latest release version {version} from {linux_download_url}...')
     response = requests.get(linux_download_url, verify=False)
     response.raise_for_status()
     
@@ -130,30 +189,27 @@ def download_from_provider_website(driver, extension_id, crx_download_url, exten
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
         zip_ref.extractall(extension_dir)
     
-    for root, dirs, files in os.walk(extension_dir):
-        for file in files:
-            if file.endswith('.crx'):
-                logging.info(f"Found CRX file: {file}")
-                return os.path.join(root, file)
-    
+    for root, dirs, files_in_dir in os.walk(extension_dir):
+        for file_name in files_in_dir:
+            if file_name.endswith('.crx'):
+                logging.info(f"Found CRX file: {file_name}")
+                return os.path.join(root, file_name)
     raise FileNotFoundError('CRX file not found in the extracted folder.')
 
-# function to handle cookie banner: If a cookie banner is present press the button containing the accept text
+
 def handle_cookie_banner(driver):
     """
-    Handle the cookie banner by clicking the "ACCEPT ALL" button if it's present.
-
+    Handle cookie banner by clicking the accept button if it exists.
     Args:
         driver (webdriver): The WebDriver instance.
     """
+    logging.info('Checking for cookie banner...')
     try:
-        # Match button by visible text
         cookie_button = driver.find_element(By.XPATH, "//button[contains(translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'ACCEPT ALL')]")
-        
         if cookie_button:
             logging.info('Cookie banner found. Accepting cookies...')
             cookie_button.click()
-            time.sleep(random.randint(3, 11))  # simulate human behavior
+            time.sleep(random.randint(3, 11))
             logging.info('Cookies accepted.')
     except NoSuchElementException:
         logging.info("No cookie banner found.")
@@ -184,10 +240,9 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
             driver.switch_to.window(driver.window_handles[-1])
             driver.get(login_url)
             logging.info(f'Waiting for the login page {login_url} to load...')
-            
             WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'CONTINUE')]"))
-            )
+                )
             logging.info('Login page loaded successfully!')
             handle_cookie_banner(driver)
             logging.info('Entering credentials...')
@@ -198,12 +253,12 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
             button = driver.find_element(By.XPATH, "//button[contains(text(), 'CONTINUE')]")
             button.click()
             use_password_instead = WebDriverWait(driver, 30).until(
-               EC.element_to_be_clickable((By.XPATH, "//p[translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')='USE PASSWORD INSTEAD']"))
-            )
+                EC.element_to_be_clickable((By.XPATH, "//p[translate(., 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')='USE PASSWORD INSTEAD']"))
+                )
             use_password_instead.click()
 
             logging.info("Clicked on Use Password Instead......")
-            time.sleep(random.random(3,7))
+            time.sleep(random.randint(3, 7))
             passwd = driver.find_element(By.NAME, "password")
             passwd.clear()
             passwd.send_keys(password)
@@ -216,7 +271,7 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
             logging.info('Waiting for login to complete...')
             WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "//button[text()='Logout']"))
-            )
+                )
             logging.info('Login successful!')
             handle_cookie_banner(driver)
             time.sleep(random.randint(3, 11))
@@ -227,20 +282,18 @@ def login_to_website(driver, email_username, password, login_url, max_retry_mult
                 logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
                 close_current_tab(driver)
                 time.sleep(random.randint(3, 11) * (attempt + 1))
-                continue  # Move to the next iteration (retry)
+                continue
             else:
-                safe_quit(driver)
-                raise
+                raise LoginFailedError(f"Login failed after {max_retries} attempts for user {email_username}: {e}")
         except Exception as e:
             logging.error(f'An unexpected error occurred during login: {e}')
             if attempt < max_retries - 1:
                 logging.info(f'Retrying login... ({attempt + 1}/{max_retries})')
                 close_current_tab(driver)
                 time.sleep(random.randint(3, 11) * (attempt + 1))
-                continue  # Move to the next iteration (retry)
+                continue
             else:
-                safe_quit(driver)
-                raise
+                raise LoginFailedError(f"An unexpected error occurred during login after {max_retries} attempts for user {email_username}: {e}")
 
 
 def initialize_driver(crx_file_paths=None):
@@ -309,7 +362,7 @@ def check_and_connect(driver, extension_id, max_retry_multiplier):
             driver.get(f'chrome-extension://{extension_id}/index.html')
             WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "//p[contains(text(), 'Grass is Connected')]"))
-            )
+                )
             logging.info('Grass is Connected message found.')
             return driver.current_window_handle  # Return the handle of the current window
         except TimeoutException:
@@ -324,14 +377,19 @@ def check_and_connect(driver, extension_id, max_retry_multiplier):
                     logging.info(f'Retrying... ({attempt + 1}/{max_retries})')
                     close_current_tab(driver)
                     time.sleep(random.randint(3, 11) * (attempt + 1))
-                    continue  # Move to the next iteration (retry)
+                    continue
                 else:
-                    raise Exception('Failed to find the required elements on the page after several attempts.')
+                    raise ExtensionConnectionError(f"Failed to connect extension {extension_id} after {max_retries} attempts. Required elements not found.")
             except Exception as e:
                 logging.error(f'An unexpected error occurred while attempting to connect: {e}')
-                close_current_tab(driver)
-                raise
-    return False
+                if attempt < max_retries - 1:
+                    logging.info(f'Retrying due to unexpected error... ({attempt + 1}/{max_retries})')
+                    close_current_tab(driver)
+                    time.sleep(random.randint(3, 11) * (attempt + 1))
+                    continue
+                else:
+                    raise ExtensionConnectionError(f"An unexpected error occurred while attempting to connect extension {extension_id} after {max_retries} attempts: {e}")
+    raise ExtensionConnectionError(f"Failed to connect extension {extension_id} after {max_retries} attempts (exhausted retries).")
 
 
 def refresh_and_check(driver, extension_id, window_handle):
@@ -352,7 +410,7 @@ def refresh_and_check(driver, extension_id, window_handle):
         driver.refresh()
         WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.XPATH, "//p[contains(text(), 'Grass is Connected')]"))
-        )
+            )
         logging.info(f'Extension {extension_id} is still connected.')
     except Exception as e:
         logging.error(f'Extension {extension_id} lost connection. Restarting...')
@@ -405,91 +463,267 @@ def safe_quit(driver):
             logging.error(f'Unexpected error occurred while quitting the browser: {e}')
         finally:
             try:
-                driver.quit()
+                driver.quit() # Attempt quit again in finally, just in case
             except Exception:
-                pass
+                pass # Ignore errors during final quit attempt
     else:
         logging.info('WebDriver is not active or already closed.')
 
+
+def download_with_auth_check(driver, extension_id, crx_download_url, extension_dir, need_auth=False, auth_data=None):
+    """
+    Download extension with optional authentication check.
+    
+    Args:
+        driver (webdriver): The WebDriver instance
+        extension_id (str): The ID of the extension
+        crx_download_url (str): The URL to download the extension
+        extension_dir (str): Directory to save the extension
+        need_auth (bool): Whether authentication is needed for this download
+        auth_data (dict): Dictionary containing auth data {
+            'email': str,
+            'password': str,
+            'login_url': str,
+            'max_retry_multiplier': int
+        }
+    
+    Returns:
+        str: Path to the downloaded CRX file
+    """
+    if need_auth and auth_data:
+        if not all(k in auth_data for k in ['email', 'password', 'login_url', 'max_retry_multiplier']):
+            raise ValueError("Missing required authentication data")
+            
+        logging.info('Authentication required for download. Logging in...')
+        login_to_website(
+            driver,
+            auth_data['email'],
+            auth_data['password'],
+            auth_data['login_url'],
+            auth_data['max_retry_multiplier']
+        )
+        
+    return download_from_provider_website(driver, extension_id, crx_download_url, extension_dir)
 
 def main():
     """
     Main function to run the script.
     """
     setup_logging()
+    try_autologin = os.getenv('TRY_AUTOLOGIN', 'true').lower() == 'true'
+    require_auth = os.getenv('REQUIRE_AUTH_FOR_DOWNLOADS', 'false').lower() == 'true'
+    logging.info(f"TRY_AUTOLOGIN set to: {try_autologin}")
+    logging.info(f"REQUIRE_AUTH_FOR_DOWNLOADS set to: {require_auth}")
     logging.info('Launching Grass node application...')
     
     # Read variables from the OS environment making compatible with both USER_EMAIL and also as fallback GRASS_EMAIL (from lite img)
     email_username = os.getenv('USER_EMAIL') or os.getenv('GRASS_EMAIL') or os.getenv('GRASS_USER') or os.getenv('GRASS_USERNAME')
     password = os.getenv('USER_PASSWORD') or os.getenv('GRASS_PASSWORD') or os.getenv('GRASS_PASS')
-    extension_ids = os.getenv('EXTENSION_IDS').split(',')
-    extension_urls = os.getenv('EXTENSION_URLS').split(',')
-    crx_download_urls = os.getenv('CRX_DOWNLOAD_URLS').split(',')
-    max_retry_multiplier = int(os.getenv('MAX_RETRY_MULTIPLIER', 3))  # Default to 3 if not set
-    
-    # Check if credentials are provided
+
+    # Check if credentials are provided for autologin, but script can proceed to manual mode if not.
     if not email_username or not password:
-        logging.error('No username or password provided. Please set the USER_EMAIL and USER_PASSWORD environment variables.')
+        logging.warning('Username or password not provided. Autologin will be skipped if attempted.')
+
+    extension_ids_str = os.getenv('EXTENSION_IDS')
+    if not extension_ids_str:
+        logging.error("EXTENSION_IDS environment variable is not set. Exiting.")
+        return
+    extension_ids = extension_ids_str.split(',')
+
+    extension_urls_str = os.getenv('EXTENSION_URLS')
+    extension_urls = []
+    if extension_urls_str:
+        extension_urls = extension_urls_str.split(',')
+        if len(extension_urls) != len(extension_ids):
+            logging.error("Mismatch between number of EXTENSION_IDS and EXTENSION_URLS. Exiting.")
+            return
+    else: # Only warn if autologin is attempted with provider downloads that might need it.
+        if try_autologin and email_username and password:
+             # Check if any crx_download_url is a provider URL
+            crx_download_urls_for_check = (os.getenv('CRX_DOWNLOAD_URLS') or "").split(',')
+            if any(url and not url.startswith('https://chromewebstore.google.com') for url in crx_download_urls_for_check if url):
+                logging.warning("EXTENSION_URLS is not set. This might be an issue if autologin requires login to a website to download extensions from a provider.")
+
+
+    crx_download_urls_str = os.getenv('CRX_DOWNLOAD_URLS')
+    if not crx_download_urls_str:
+        logging.error("CRX_DOWNLOAD_URLS environment variable is not set. Exiting.")
+        return
+    crx_download_urls = crx_download_urls_str.split(',')
+    if len(crx_download_urls) != len(extension_ids):
+        logging.error("Mismatch between number of EXTENSION_IDS and CRX_DOWNLOAD_URLS. Exiting.")
         return
 
-    driver = None  # Initialize driver to None
+    max_retry_multiplier = int(os.getenv('MAX_RETRY_MULTIPLIER', 3))
+    autologin_successful = False
+    driver = None
+    manual_mode_activated = False
+    extension_window_handles = {}
 
-    max_retries = max_retry_multiplier
-    for attempt in range(max_retries):
-        try:
-            crx_file_paths = []
-            driver = initialize_driver()
-            extension_window_handles = {}
-
-            for extension_id, extension_url, crx_download_url in zip(extension_ids, extension_urls, crx_download_urls):
-                # Perform initial login
-                login_to_website(driver, email_username, password, extension_url, max_retry_multiplier)
+    if try_autologin and email_username and password:
+        logging.info("Attempting autologin...")
+        max_retries_main = max_retry_multiplier
+        for attempt_main in range(max_retries_main):
+            try:
+                crx_file_paths = []
+                driver = initialize_driver()
+                if not extension_urls: # Check before trying to access extension_urls[0]
+                    logging.error("EXTENSION_URLS is empty, cannot perform initial login for extension download during autologin.")
+                    raise Exception("EXTENSION_URLS is required for autologin sequence if downloads are from provider or if login is needed.")
                 
-                # Download and install the latest extension
-                crx_file_path = download_and_extract_extension(driver, extension_id, crx_download_url)
-                crx_file_paths.append(crx_file_path)
-            
-            logging.info('Closing the browser and re-initializing it with the extensions installed...')
-            safe_quit(driver)
-            driver = None  # Reset driver to None after quitting
-            
-            # Re-initialize the browser with the new extensions
-            driver = initialize_driver(crx_file_paths)
-            logging.info('Browser re-initialized with the extensions installed.')
-            # Log in again and check the connection status for each extension
-            for extension_id, extension_url in zip(extension_ids, extension_urls):
-                login_to_website(driver, email_username, password, extension_url, max_retry_multiplier)
-                window_handle = check_and_connect(driver, extension_id, max_retry_multiplier)
-                extension_window_handles[extension_id] = window_handle
-            
-            logging.info('All extensions are connected successfully.')
-
-            while True:
-                try:
-                    time.sleep(random.randint(3600, 14400))  # Wait for 1-4 hours before the next check
-                    for extension_id in extension_ids:
-                        refresh_and_check(driver, extension_id, extension_window_handles[extension_id])
-                except Exception as e:
-                    logging.error(f'An error occurred during the refresh cycle: {e}')
-                    # safequit driver moved to finally block
-                    break  # Exit the while loop to re-initialize
-            continue  # Try to re-initialize everything until max attempts
-        except Exception as e:
-            logging.error(f'An error occurred: {e}')
-            # safequit driver moved to finally block
-            if attempt < max_retries - 1:
-                # Backoff timing: random wait multiplied by attempt and multiplier
-                backoff_time = random.randint(11, 31) * (attempt+1) * max_retry_multiplier
-                logging.info(f'Backing off for {backoff_time} seconds before attempt {attempt + 1}/{max_retries}...')
-                time.sleep(backoff_time)
-                continue
-            else:
-                raise
-        finally:
-            if driver is not None:
+                login_to_website(driver, email_username, password, extension_urls[0], max_retry_multiplier)
+                for ext_id, crx_download_url in zip(extension_ids, crx_download_urls):
+                    crx_file_path = download_and_extract_extension(
+                        driver, 
+                        ext_id, 
+                        crx_download_url,
+                        extension_urls=extension_urls,
+                        email_username=email_username,
+                        password=password,
+                        max_retry_multiplier=max_retry_multiplier,
+                        require_auth=require_auth
+                    )
+                    crx_file_paths.append(crx_file_path)
+                logging.info('Closing browser to re-initialize with extensions...')
                 safe_quit(driver)
-                driver = None  # Reset driver to None after quitting
+                driver = None
+                driver = initialize_driver(crx_file_paths=crx_file_paths)
+                logging.info('Browser re-initialized with extensions.')
+                login_to_website(driver, email_username, password, extension_urls[0], max_retry_multiplier)
+                
+                temp_extension_window_handles = {}
+                for ext_id in extension_ids:
+                    window_handle = check_and_connect(driver, ext_id, max_retry_multiplier)
+                    temp_extension_window_handles[ext_id] = window_handle
+                extension_window_handles = temp_extension_window_handles
+                
+                logging.info('All extensions connected successfully. Autologin complete.')
+                autologin_successful = True
+                break
+            except (LoginFailedError, ExtensionConnectionError, ExtensionDownloadError, WebDriverException, TimeoutException, NoSuchElementException, FileNotFoundException) as e:
+                logging.error(f'Autologin attempt {attempt_main + 1}/{max_retries_main} failed: {e}')
+                if driver:
+                    safe_quit(driver)
+                    driver = None
+                if attempt_main < max_retries_main - 1:
+                    time.sleep(random.randint(11, 31) * (attempt_main + 1))
+                else:
+                    logging.error("Max autologin retries reached. Falling back to manual mode.")
+            except Exception as e:
+                logging.error(f'Unexpected error during autologin attempt {attempt_main + 1}/{max_retries_main}: {e}')
+                if driver:
+                    safe_quit(driver)
+                    driver = None
+                if attempt_main < max_retries_main - 1:
+                    time.sleep(random.randint(11, 31) * (attempt_main + 1))
+                else:
+                    logging.error("Max autologin retries reached after unexpected error. Falling back to manual mode.")
+    else:
+        if try_autologin and (not email_username or not password):
+            logging.warning("TRY_AUTOLOGIN is true, but email or password not provided. Skipping autologin.")
+        elif not try_autologin:
+            logging.info("TRY_AUTOLOGIN is false. Skipping autologin.")
+    
+    if not autologin_successful:
+        manual_mode_activated = True
+        logging.info("Entering manual mode: Attempting to install extension and open its page.")
+        try:
+            if driver:
+                safe_quit(driver)
+                driver = None
+            
+            temp_driver_for_download = None
+            crx_file_paths_manual = []
+            try:
+                needs_temp_driver = any(url and not url.startswith('https://chromewebstore.google.com') for url in crx_download_urls if url)
+                if needs_temp_driver:
+                    logging.info("Manual mode: Initializing temporary driver for non-CWS extension download.")
+                    temp_driver_for_download = initialize_driver()
+                
+                for ext_id, crx_dl_url in zip(extension_ids, crx_download_urls):
+                    logging.info(f"Manual mode: Downloading/extracting extension {ext_id} from {crx_dl_url}")
+                    current_driver_for_task = None
+                    
+                    if not crx_dl_url.startswith('https://chromewebstore.google.com'):
+                        current_driver_for_task = temp_driver_for_download
+                    
+                    crx_path = download_and_extract_extension(
+                        current_driver_for_task, 
+                        ext_id, 
+                        crx_dl_url,
+                        extension_urls=extension_urls,
+                        email_username=email_username,
+                        password=password,
+                        max_retry_multiplier=max_retry_multiplier,
+                        require_auth=require_auth
+                    )
+                    crx_file_paths_manual.append(crx_path)
+            except ExtensionDownloadError as ede: # Catch specific download error
+                 logging.error(f"ExtensionDownloadError in manual mode: {ede}. Will try to open browser.")
+            except Exception as e:
+                logging.error(f"Failed to download/extract one or more extensions in manual mode: {e}. Will try to open browser.")
+            finally:
+                if temp_driver_for_download:
+                    safe_quit(temp_driver_for_download)
 
+            if crx_file_paths_manual:
+                logging.info("Manual mode: Initializing driver with any downloaded extensions.")
+                driver = initialize_driver(crx_file_paths=crx_file_paths_manual)
+            else:
+                logging.warning("Manual mode: No extensions were downloaded/extracted. Proceeding with a basic browser session.")
+                driver = initialize_driver()
+
+            if not driver:
+                logging.error("Manual mode: Failed to initialize main WebDriver. Exiting.")
+                return
+
+            primary_extension_id = extension_ids[0]
+            extension_page_url = f'chrome-extension://{primary_extension_id}/index.html'
+            logging.info(f"Manual mode: Opening extension page: {extension_page_url}")
+            try:
+                driver.get(extension_page_url)
+            except WebDriverException as e: # Catch error if extension page fails to load
+                logging.error(f"Failed to load extension page {extension_page_url} in manual mode: {e}")
+                logging.info("Browser will remain open. Please navigate manually or check extension installation.")
+
+            logging.info("Browser is open for manual interaction. Script will now idle.")
+            while True: time.sleep(3600)
+        except Exception as e:
+            logging.error(f"Critical error setting up manual mode: {e}")
+            if driver:
+                safe_quit(driver)
+            logging.info("Exiting due to critical error in manual mode setup.")
+            return
+
+    if autologin_successful and driver:
+        logging.info("Autologin successful. Starting monitoring loop...")
+        try:
+            while True:
+                time.sleep(random.randint(3600, 14400))
+                for ext_id in extension_ids:
+                    if ext_id in extension_window_handles: # Check if key exists
+                        refresh_and_check(driver, ext_id, extension_window_handles[ext_id])
+                    else:
+                        logging.warning(f"Window handle for extension ID {ext_id} not found for refresh check.")
+        except KeyboardInterrupt:
+            logging.info("Keyboard interrupt received. Exiting monitoring loop.")
+        except Exception as e:
+            logging.error(f"Error in monitoring loop: {e}. Autologin session might be compromised.")
+        finally:
+            if not manual_mode_activated:
+                logging.info("Closing browser from autologin monitoring loop exit.")
+                safe_quit(driver)
+    elif not manual_mode_activated:
+        logging.info("Autologin was not successful and did not enter manual mode. Script will exit.")
+        if driver:
+            safe_quit(driver)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        logging.info("Script interrupted by user. Exiting.")
+    except Exception as e:
+        logging.critical(f"Unhandled exception in main: {e}", exc_info=True)
+    finally:
+        logging.info("Script execution finished.")

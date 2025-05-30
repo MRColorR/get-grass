@@ -8,6 +8,9 @@ services:
     hostname: my_device
     image: mrcolorrain/grass
     environment:
-      - GRASS_USER=${USER_EMAIL}
-      - GRASS_PASS=${USER_PASSWORD}
+      - USER_EMAIL=${USER_EMAIL}
+      - USER_PASSWORD=${USER_PASSWORD}
+      - TRY_AUTOLOGIN=${TRY_AUTOLOGIN:-true}
+      - MAX_RETRY_MULTIPLIER=${MAX_RETRY_MULTIPLIER:-3}
+      - HEADLESS=${HEADLESS:-true}
     restart: unless-stopped

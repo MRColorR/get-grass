@@ -22,7 +22,7 @@ Ensure Docker is installed on your system. For installation instructions, please
 You can run it easily passing the appropriate environment variables.
 - ### Docker cli 🐳
   ```bash
-  docker run -d --name grass -h my_device -e GRASS_USER=your_email -e GRASS_PASS=your_password mrcolorrain/grass
+  docker run -d --name grass -h my_device -e USER_EMAIL=your_email -e USER_PASSWORD=your_password mrcolorrain/grass
   ```
 - ### Docker compose 🐳
   ```yaml
@@ -33,16 +33,32 @@ You can run it easily passing the appropriate environment variables.
       hostname: my_device
       image: mrcolorrain/grass
       environment:
-        - GRASS_USER=your_email
-        - GRASS_PASS=your_password
+        - USER_EMAIL=your_email
+        - USER_PASSWORD=your_password
       restart: unless-stopped
   ```
 ---
 ## Grass-Node 📦
 This section provides instructions on how to use the grass-node extension if you want to use this instead of the standard grass extension available in the other image.
+
+### Environment Variables
+- `USER_EMAIL` or `GRASS_EMAIL` or `GRASS_USER`: Your Grass account email
+- `USER_PASSWORD` or `GRASS_PASSWORD` or `GRASS_PASS`: Your Grass account password
+- `MAX_RETRY_MULTIPLIER`: (Optional) Number to multiply retry timings.
+- `TRY_AUTOLOGIN`: (Optional) Set to "false" to disable automatic login.
+- `REQUIRE_AUTH_FOR_DOWNLOADS`: (Optional) Set to "true" if extension downloads require authentication.
+- `HEADLESS`: (Optional) Set to "true" to run in headless mode.
+
 - ### Docker cli 🐳
   ```bash
-  docker run -d --name grass-node -h my_device -e USER_EMAIL=your_email -e USER_PASSWORD=your_password -p 5900:5900 -p 6080:6080 mrcolorrain/grass-node
+  docker run -d --name grass-node \
+    -h my_device \
+    -e USER_EMAIL=your_email \
+    -e USER_PASSWORD=your_password \
+    -e TRY_AUTOLOGIN=true \
+    -p 5900:5900 \
+    -p 6080:6080 \
+    mrcolorrain/grass-node
   ```
 - ### Docker compose 🐳
   ```yaml
@@ -55,6 +71,7 @@ This section provides instructions on how to use the grass-node extension if you
       environment:
         USER_EMAIL: your_email
         USER_PASSWORD: your_password
+        TRY_AUTOLOGIN: "true"
       ports:
         - "5900:5900"
         - "6080:6080"
@@ -68,12 +85,23 @@ _Note: This GUI version is heavier than the other images due to the additional c
 ### Environment Variables
 - `USER_EMAIL` or `GRASS_EMAIL` or `GRASS_USER`: Your Grass account email
 - `USER_PASSWORD` or `GRASS_PASSWORD` or `GRASS_PASS`: Your Grass account password
-- `TRY_AUTOLOGIN`: Set to "true" to enable automatic login. Set to "false" to disable automatic login and require manual interaction.
-- `MAX_RETRY_MULTIPLIER`: (Optional) A number to multiply retry timings. Default is 3. Increase this if you experience timing issues with auto-login.
+- `TRY_AUTOLOGIN`: (Optional) Set to "false" to disable automatic login. Default is "true"
+- `MAX_RETRY_MULTIPLIER`: (Optional) A number to multiply retry timings. Default is 3
+- `CUSTOMIZE`: (Optional) Whether to allow entrypoint customization. Default is "true"
+- `AUTO_START_BROWSER`: (Optional) Whether to start browser automatically. Default is "false"
+- `AUTO_START_XTERM`: (Optional) Whether to start xterm automatically. Default is "false"
 
 ### Docker cli 🐳
   ```bash
-  docker run -d --name grass-desktop -h my_device -e USER_EMAIL=your_email -e USER_PASSWORD=your_password -e TRY_AUTOLOGIN=false -p 5900:5900 -p 6080:6080 mrcolorrain/grass-desktop
+  docker run -d \
+    --name grass-desktop \
+    -h my_device \
+    -e USER_EMAIL=your_email \
+    -e USER_PASSWORD=your_password \
+    -e TRY_AUTOLOGIN=true \
+    -p 5900:5900 \
+    -p 6080:6080 \
+    mrcolorrain/grass-desktop
   ```
 
 ### Docker compose 🐳
@@ -87,7 +115,7 @@ _Note: This GUI version is heavier than the other images due to the additional c
       environment:
         USER_EMAIL: your_email
         USER_PASSWORD: your_password
-        TRY_AUTOLOGIN: "false"
+        TRY_AUTOLOGIN: "true"
       ports:
         - "5900:5900"
         - "6080:6080"
