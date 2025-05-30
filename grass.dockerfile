@@ -1,4 +1,4 @@
-FROM debian:stable-slim
+FROM mrcolorrain/vnc-browser:debian
 
 # Set environment variables for extension
 ENV EXTENSION_ID=ilehaonighjijnmpnagapkhpcdbhclfg
@@ -52,7 +52,16 @@ RUN set -e; \
 # # Download the extension selected
 # RUN python3 ./${GIT_REPO}/crx-dl.py $EXTENSION_ID
 
-# Install python requirements
-COPY grass_main.py .
-# RUN pip install -r requirements.txt
-ENTRYPOINT [ "python3", "grass_main.py" ]
+# Set up working directory
+WORKDIR /app
+
+# Copy the script to custom entrypoints directory (used by base image)
+COPY grass_main.py /app/custom_entrypoints_scripts/grass_main.py
+
+# New base image permits entrypoint customization
+ENV CUSTOMIZE=true
+ENV AUTO_START_BROWSER=false
+ENV AUTO_START_XTERM=false
+
+# Expose VNC and noVNC ports
+EXPOSE 5900 6080
