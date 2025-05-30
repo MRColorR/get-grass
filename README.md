@@ -18,13 +18,33 @@ This repository hosts the Dockerfiles and necessary configurations for the unoff
 ## Prerequisites 📋
 Ensure Docker is installed on your system. For installation instructions, please refer to the [official Docker documentation](https://docs.docker.com/get-docker/).
 
-## Quick Start 🚀
-You can run it easily passing the appropriate environment variables.
-- ### Docker cli 🐳
+## Quick Start with Grass (Lite) 🚀
+This is the standard Grass Lite version, optimized for running the basic Grass extension.
+
+### Environment Variables
+- `USER_EMAIL` or `GRASS_EMAIL` or `GRASS_USER`: Your Grass account email
+- `USER_PASSWORD` or `GRASS_PASSWORD` or `GRASS_PASS`: Your Grass account password
+- `MAX_RETRY_MULTIPLIER`: (Optional) Number to multiply retry timings
+- `TRY_AUTOLOGIN`: (Optional) Set to "false" to disable automatic login
+- `REQUIRE_AUTH_FOR_DOWNLOADS`: (Optional) Set to "true" if extension downloads require authentication
+- `HEADLESS`: (Optional) Set to "true" to run in headless mode
+- `CUSTOMIZE`: (Optional) Whether to allow entrypoint customization
+- `AUTO_START_BROWSER`: (Optional) Whether to start browser automatically
+- `AUTO_START_XTERM`: (Optional) Whether to start xterm automatically
+
+### Docker cli 🐳
   ```bash
-  docker run -d --name grass -h my_device -e USER_EMAIL=your_email -e USER_PASSWORD=your_password mrcolorrain/grass
+  docker run -d --name grass \
+    -h my_device \
+    -e USER_EMAIL=your_email \
+    -e USER_PASSWORD=your_password \
+    -e TRY_AUTOLOGIN=true \
+    -p 5900:5900 \
+    -p 6080:6080 \
+    mrcolorrain/grass
   ```
-- ### Docker compose 🐳
+
+### Docker compose 🐳
   ```yaml
   version: "3.9"
   services:
@@ -33,10 +53,17 @@ You can run it easily passing the appropriate environment variables.
       hostname: my_device
       image: mrcolorrain/grass
       environment:
-        - USER_EMAIL=your_email
-        - USER_PASSWORD=your_password
+        USER_EMAIL: your_email
+        USER_PASSWORD: your_password
+        TRY_AUTOLOGIN: "true"
+      ports:
+        - "5900:5900"
+        - "6080:6080"
       restart: unless-stopped
   ```
+
+_Default vnc password is the default password of [vnc-browser](https://github.com/MRColorR/vnc-browser) image. (Currently it should be: `money4band`)_
+
 ---
 ## Grass-Node 📦
 This section provides instructions on how to use the grass-node extension if you want to use this instead of the standard grass extension available in the other image.
