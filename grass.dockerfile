@@ -18,7 +18,7 @@ ENV CRX_DOWNLOAD_URLS=${CRX_DOWNLOAD_URL}
 ENV MAX_RETRY_MULTIPLIER=3
 # Define whether to try autologin (true) or go directly to manual mode (false)
 ENV TRY_AUTOLOGIN=true
-ENV HEADLESS=true
+ENV HEADLESS=false
 ENV REQUIRE_AUTH_FOR_DOWNLOADS=false
 
 # Git configuration for extension download
