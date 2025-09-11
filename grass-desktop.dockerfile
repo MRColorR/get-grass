@@ -1,9 +1,9 @@
 # --- Stage 1: Build Stage to Patch Grass Deb ---
     FROM debian:stable-slim AS grass-deb-patcher
 
-    ARG GRASS_VERSION="5.3.1"
+    ARG GRASS_VERSION="5.5.4"
     ARG GRASS_ARCH="amd64"
-    ARG GRASS_PACKAGE_URL="https://files.getgrass.io/file/grass-extension-upgrades/ubuntu-22.04/Grass_${GRASS_VERSION}_${GRASS_ARCH}.deb"
+    ARG GRASS_PACKAGE_URL="https://files.grass.io/file/grass-extension-upgrades/v5.5.4/Grass_${GRASS_VERSION}_${GRASS_ARCH}.deb"
     
     RUN apt-get update && apt-get install -y --no-install-recommends \
         binutils \
