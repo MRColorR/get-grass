@@ -61,6 +61,43 @@ This section provides instructions on how to use the grass-node extension if you
   ```
    _Default vnc password is the default password of [vnc-browser](https://github.com/MRColorR/vnc-browser) image. (Currently it should be: `money4band`)_
 
+---
+## Grass-Node ARM64 (Raspberry Pi) 🍓
+This is a self-built variant of grass-node designed for ARM64 devices such as the Raspberry Pi. There is no pre-built image on Docker Hub — you must build it locally. This variant does **not** support auto-login; you will log in to your Grass account manually through the noVNC web interface.
+
+- ### Build & Run with Docker CLI 🐳
+  ```bash
+  docker build -t grass-node-arm64 -f grass-node-arm64.dockerfile .
+  docker run -d --name grass --shm-size=256m -p 6080:6080 --restart unless-stopped grass-node-arm64
+  ```
+
+- ### Docker compose 🐳
+  ```yaml
+  services:
+    grass-node-arm64:
+      build:
+        context: .
+        dockerfile: grass-node-arm64.dockerfile
+      container_name: grass
+      shm_size: '256m'
+      ports:
+        - "6080:6080"
+      restart: unless-stopped
+  ```
+  ```bash
+  docker compose -f grass-node-arm64.docker-compose.yaml build && docker compose -f grass-node-arm64.docker-compose.yaml up -d
+  ```
+
+### Setting up your account via noVNC
+Once the container is running you need to connect to noVNC to log in to your Grass account:
+1. Open `http://<your-host-ip>:6080` in a web browser
+2. Enter the VNC password when prompted (default: `money4band`)
+3. A Chromium browser will appear with the Grass dashboard — log in with your Grass credentials
+4. Once logged in, the script automatically detects the connection and begins monitoring it. If the connection drops, the browser will restart and you will need to log in again via noVNC.
+
+  _Default vnc password is the default password of [vnc-browser](https://github.com/MRColorR/vnc-browser) image. (Currently it should be: `money4band`)_
+
+---
 ## Grass-Desktop 🖥️
 we have also a Grass Desktop image available. This section provides instructions on how to use the grass-desktop GUI application fully automated inside a container.  Just in case you want to use this instead of the standard grass-node or grass extension available in the other images. 
 _Note: This GUI version is heavier than the other images due to the additional components required to run a full desktop environment._

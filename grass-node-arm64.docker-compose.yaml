@@ -1,0 +1,10 @@
+services:
+  grass-node-arm64:
+    build:
+      context: .
+      dockerfile: grass-node-arm64.dockerfile
+    container_name: grass
+    shm_size: '256m'
+    ports:
+      - "6080:6080"
+    restart: unless-stopped
